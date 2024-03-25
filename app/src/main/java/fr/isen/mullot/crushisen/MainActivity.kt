@@ -61,10 +61,12 @@ class MainViewModel : ViewModel() {
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
+                Log.e("Firebase", "Error fetching message: ${databaseError.message}")
                 message = "Error fetching message"
             }
         })
     }
+
 }
 
 
