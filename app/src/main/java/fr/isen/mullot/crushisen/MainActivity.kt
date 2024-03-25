@@ -5,7 +5,10 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,31 +23,36 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialiser Firebase
-        FirebaseApp.initializeApp(this)
         setContent {
             CrushIsenTheme {
-                // Initialiser le ViewModel avec le contexte de l'activité
                 val viewModel = remember { MainViewModel() }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Afficher le message Firebase
-                    Text(text = viewModel.message?.joinToString(", ") ?: "", modifier = Modifier.fillMaxSize())
-                }
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Text(text = viewModel.message?.entries?.joinToString(", ") { "${it.key}: ${it.value}" } ?: "")
+                        Spacer(modifier = Modifier.weight(1f))
+                        Button(onClick = { viewModel.sendMessage("key2", "Hello, Firebase!") }) {
+                            Text("Send Message")
+                        }
+                    }
 
-                // Lancer la récupération des données
-                LaunchedEffect(true) {
-                    viewModel.fetchData()
+                    LaunchedEffect(true) {
+                        viewModel.fetchData()
+                    }
                 }
             }
         }
     }
-}class MainViewModel : ViewModel() {
+
+
+}
+
+class MainViewModel : ViewModel() {
     // Message to display
-    var message by mutableStateOf<List<String>?>(null)
+    var message by mutableStateOf<Map<String, String>?>(null)
         private set // allows modification only within the class
 
     // Reference to the Firebase database
@@ -54,16 +62,21 @@ class MainActivity : ComponentActivity() {
     fun fetchData() {
         database.child("test").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val typeIndicator = object : GenericTypeIndicator<ArrayList<String>>() {}
+                val typeIndicator = object : GenericTypeIndicator<HashMap<String, String>>() {}
                 val value = dataSnapshot.getValue(typeIndicator)
-                message = value ?: listOf("No message found")
+                message = value ?: mapOf("No message" to "found")
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
                 Log.e("Firebase", "Error fetching message: ${databaseError.message}")
-                message = listOf("Error fetching message")
+                message = mapOf("Error fetching message" to "")
             }
         })
+    }
+
+    // Send a message to Firebase
+    fun sendMessage(key: String, value: String) {
+        database.child("test").child(key).setValue(value)
     }
 }
 
