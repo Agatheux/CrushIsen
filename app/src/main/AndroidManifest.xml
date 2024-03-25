@@ -15,6 +15,16 @@
         android:theme="@style/Theme.CrushIsen"
         tools:targetApi="31">
         <activity
+            android:name=".FeedActivity"
+            android:exported="false"
+            android:label="@string/title_activity_feed"
+            android:theme="@style/Theme.CrushIsen" />
+        <activity
+            android:name=".HeaderActivity"
+            android:exported="false"
+            android:label="@string/title_activity_header"
+            android:theme="@style/Theme.CrushIsen" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
