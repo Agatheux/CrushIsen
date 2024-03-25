@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // Afficher le message Firebase
-                    Text(text = viewModel.message ?: "", modifier = Modifier.fillMaxSize())
+                    Text(text = viewModel.message?.joinToString(", ") ?: "", modifier = Modifier.fillMaxSize())
                 }
 
                 // Lancer la récupération des données
@@ -42,31 +42,29 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
+}class MainViewModel : ViewModel() {
+    // Message to display
+    var message by mutableStateOf<List<String>?>(null)
+        private set // allows modification only within the class
 
-class MainViewModel : ViewModel() {
-    // Message à afficher
-    var message by mutableStateOf<String?>(null)
-        private set // permet de modifier uniquement à l'intérieur de la classe
-
-    // Référence à la base de données Firebase
+    // Reference to the Firebase database
     private val database: DatabaseReference = FirebaseDatabase.getInstance().reference
 
-    // Récupérer les données depuis la base de données Firebase
+    // Fetch data from the Firebase database
     fun fetchData() {
         database.child("test").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val value = dataSnapshot.getValue(String::class.java)
-                message = value ?: "No message found"
+                val typeIndicator = object : GenericTypeIndicator<ArrayList<String>>() {}
+                val value = dataSnapshot.getValue(typeIndicator)
+                message = value ?: listOf("No message found")
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
                 Log.e("Firebase", "Error fetching message: ${databaseError.message}")
-                message = "Error fetching message"
+                message = listOf("Error fetching message")
             }
         })
     }
-
 }
 
 
