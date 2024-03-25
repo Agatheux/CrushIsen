@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Couleur primaire utilisée par les composants de l'interface utilisateur, tels que les boutons. -->
+    <attr name="colorPrimary" format="color" />
+
+    <!-- Couleur de fond des boutons -->
+    <attr name="colorButtonNormal" format="color" />
+
+    <!-- Couleur utilisée pour les éléments interactifs qui indiquent l'état, tels que les cases à cocher et les curseurs. -->
+    <attr name="colorAccent" format="color" />
+</resources>
