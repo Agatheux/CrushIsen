@@ -1,5 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Theme.CrushIsen" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Couleur primaire utilisée par les composants de l'interface utilisateur, tels que les boutons. -->
+        <item name="colorPrimary">#FF6200EE</item>
 
-    <style name="Theme.CrushIsen" parent="android:Theme.Material.Light.NoActionBar" />
+        <!-- Couleur de fond des boutons -->
+        <item name="colorButtonNormal">#FF175A</item>
+
+        <!-- Couleur utilisée pour les éléments interactifs qui indiquent l'état, tels que les cases à cocher et les curseurs. -->
+        <item name="colorAccent">#FF175A</item>
+    </style>
 </resources>
