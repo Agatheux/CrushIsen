@@ -555,7 +555,7 @@ fun CreateLoginPage(navController: NavController, context: Context) {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             val pseudo = snapshot.child("pseudo").value as? String ?: ""
                             // Naviguez vers FeedActivity avec le pseudo de l'utilisateur
-                            val intent = Intent(context, ProfileActivity::class.java).apply {
+                            val intent = Intent(context, FeedActivity::class.java).apply {
                                 putExtra("pseudo", pseudo)
                             }
                             context.startActivity(intent)
