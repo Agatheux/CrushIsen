@@ -1,6 +1,7 @@
 package fr.isen.mullot.crushisen
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -40,6 +41,8 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.auth.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -48,6 +51,7 @@ import com.google.firebase.storage.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import java.util.UUID
 import com.google.firebase.database.ValueEventListener
+import java.security.MessageDigest
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +77,10 @@ fun MyApp() {
         composable("createAccount") {
             CreateAccountPage(navController)
         }
+
+        composable("login") {
+            CreateLoginPage(navController, LocalContext.current)
+        }
     }
 }
 
@@ -80,9 +88,14 @@ fun navigateToCreateAccountScreen(navController: NavController) {
     navController.navigate("createAccount")
 }
 
+fun navigateToCreateLoginScreen(navController: NavController) {
+    navController.navigate("login")
+}
+
 @Composable
 fun CreateAccountPage(navController: NavController) {
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var currentPage by remember { mutableStateOf(1) }
 
     // Déclaration des variables pour stocker les valeurs des champs de texte
     var nomValue by remember { mutableStateOf("") }
@@ -190,138 +203,196 @@ fun CreateAccountPage(navController: NavController) {
                 modifier = Modifier.padding(bottom = 16.dp)
             )
         }
-
-        // Champ pour le nom
         item {
-            OutlinedTextField(
-                value = nomValue,
-                onValueChange = { nomValue = it },
-                label = { Text("Nom") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Spacer(modifier = Modifier.padding(10.dp))
         }
 
-        // Champ pour le prénom
-        item {
-            OutlinedTextField(
-                value = prenomValue,
-                onValueChange = { prenomValue = it },
-                label = { Text("Prénom") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        // Champ pour l'email
-        item {
-            OutlinedTextField(
-                value = emailValue,
-                onValueChange = { emailValue = it },
-                label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        when (currentPage) {
+            1 -> {
+                // Champs pour la première partie
+                item {
+                    OutlinedTextField(
+                        value = prenomValue,
+                        onValueChange = { prenomValue = it },
+                        label = { Text("Prénom") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = nomValue,
+                        onValueChange = { nomValue = it },
+                        label = { Text("Nom") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = emailValue,
+                        onValueChange = { emailValue = it },
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = passwordValue,
+                        onValueChange = { passwordValue = it },
+                        label = { Text("Mot de passe") },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = confirmPasswordValue,
+                        onValueChange = { confirmPasswordValue = it },
+                        label = { Text("Confirmation du mot de passe") },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = dateNaissanceValue,
+                        onValueChange = { dateNaissanceValue = it },
+                        label = { Text("Date de naissance") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+            }
+            2 -> {
+                // Champs pour la deuxième partie
+                item {
+                    OutlinedTextField(
+                        value = adresseValue,
+                        onValueChange = { adresseValue = it },
+                        label = { Text("Adresse") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-        item {
-            OutlinedTextField(
-                value = passwordValue,
-                onValueChange = { passwordValue = it },
-                label = { Text("Mot de passe") },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-        }
-
-        // Champ pour la confirmation du mot de passe
-        item {
-            OutlinedTextField(
-                value = confirmPasswordValue,
-                onValueChange = { confirmPasswordValue = it },
-                label = { Text("Confirmation du mot de passe") },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-        }
-
-
-        // Champ pour l'adresse
-        item {
-            OutlinedTextField(
-                value = adresseValue,
-                onValueChange = { adresseValue = it },
-                label = { Text("Adresse") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Champ pour la date de naissance
-        item {
-            OutlinedTextField(
-                value = dateNaissanceValue,
-                onValueChange = { dateNaissanceValue = it },
-                label = { Text("Date de naissance") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Champ pour l'année à l'ISEN
-        item {
-            OutlinedTextField(
-                value = anneeLisenValue,
-                onValueChange = { anneeLisenValue = it },
-                label = { Text("Année à l'ISEN") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Champ pour le numéro de téléphone
-        item {
-            OutlinedTextField(
-                value = numeroValue,
-                onValueChange = { numeroValue = it },
-                label = { Text("Numéro de téléphone") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Champ pour la description
-        item {
-            OutlinedTextField(
-                value = descriptionValue,
-                onValueChange = { descriptionValue = it },
-                label = { Text("Description") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }    // Champ pour le pseudo
-        item {
-            OutlinedTextField(
-                value = pseudoValue,
-                onValueChange = { pseudoValue = it },
-                label = { Text("Pseudo") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Champ pour télécharger une photo
-        item {
-            OutlinedButton(
-                onClick = { launcher.launch("image/*") },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Télécharger une photo")
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = anneeLisenValue,
+                        onValueChange = { anneeLisenValue = it },
+                        label = { Text("Année à l'ISEN") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = numeroValue,
+                        onValueChange = { numeroValue = it },
+                        label = { Text("Numéro de téléphone") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = descriptionValue,
+                        onValueChange = { descriptionValue = it },
+                        label = { Text("Description") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedTextField(
+                        value = pseudoValue,
+                        onValueChange = { pseudoValue = it },
+                        label = { Text("Pseudo") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                item {
+                    OutlinedButton(
+                        onClick = { launcher.launch("image/*")  },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Télécharger une photo")
+                    }
+                }
+                item {
+                    Spacer(modifier = Modifier.padding(10.dp))
+                }
+                // Affichage de la photo sélectionnée
+                imageBitmap?.let { bitmap ->
+                    item {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = "Photo sélectionnée",
+                            modifier = Modifier
+                                .padding(top = 16.dp)
+                                .size(120.dp),
+                        )
+                    }
+                }
             }
         }
 
-        // Affichage de la photo sélectionnée
-        imageBitmap?.let { bitmap ->
+        // Bouton précédent pour revenir à la première partie
+        if (currentPage == 2) {
             item {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = "Photo sélectionnée",
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .size(120.dp),
-                )
+                Button(
+                    onClick = {
+                        // Revenir à la première partie
+                        currentPage = 1
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Précédent")
+                }
+            }
+        }
+
+        // Bouton suivant pour passer à la deuxième partie
+        if (currentPage == 1) {
+            item {
+                Button(
+                    onClick = {
+                        // Vérifier les validations avant de passer à la deuxième partie
+                        // Si tout est valide, passer à la deuxième partie
+                        currentPage = 2
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Suivant")
+                }
             }
         }
 
@@ -483,10 +554,112 @@ fun CreateAccountPage(navController: NavController) {
     }
 }
 
-// Déclaration de la fonction isValidEmail en dehors du composant Composable
+
+@Composable
+fun CreateLoginPage(navController: NavController, context: Context) {
+    var emailValue by remember { mutableStateOf("") } // Changer pseudoValue en emailValue
+    var passwordValue by remember { mutableStateOf("") }
+    var showDialog by remember { mutableStateOf(false) }
+
+    val auth = Firebase.auth
+
+    // Fonction pour gérer la connexion de l'utilisateur
+    fun signIn() {
+        auth.signInWithEmailAndPassword(emailValue, passwordValue) // Utiliser emailValue ici
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Si la connexion réussit, récupérez le pseudo de l'utilisateur à partir de la base de données Firebase
+                    val currentUser = auth.currentUser
+                    val uid = currentUser?.uid ?: ""
+                    val userRef = FirebaseDatabase.getInstance().getReference("Crushisen").child("user").child(uid)
+                    userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            val pseudo = snapshot.child("pseudo").value as? String ?: ""
+                            // Naviguez vers FeedActivity avec le pseudo de l'utilisateur
+                            val intent = Intent(context, ProfileActivity::class.java).apply {
+                                putExtra("pseudo", pseudo)
+                            }
+                            context.startActivity(intent)
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            // Gérer l'erreur
+                        }
+                    })
+                } else {
+                    // Si la connexion échoue, affichez un dialogue indiquant que le pseudo et le mot de passe ne correspondent pas
+                    showDialog = true
+                }
+            }
+    }
+
+    // Dialog pour afficher un message si les informations de connexion sont incorrectes
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Erreur") },
+            text = { Text("Le pseudo et le mot de passe ne correspondent pas.") },
+            confirmButton = {
+                Button(onClick = { showDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        OutlinedTextField(
+            value = emailValue, // Utiliser emailValue ici
+            onValueChange = { emailValue = it }, // Utiliser emailValue ici
+            label = { Text("Adresse e-mail") }, // Changer le libellé en "Adresse e-mail"
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        OutlinedTextField(
+            value = passwordValue,
+            onValueChange = { passwordValue = it },
+            label = { Text("Mot de passe") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        Button(
+            onClick = {
+                // Vérifiez les informations de connexion lors du clic sur le bouton
+                signIn()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            Text("Se connecter")
+        }
+    }
+}
+
+
+
 fun isValidEmail(email: String): Boolean {
     // Vérifie si l'email contient au moins '@' et '.'.
     return email.contains("@") && (email.contains(".com") || email.contains(".fr"))
+}
+
+fun hashPassword(password: String): String {
+    val bytes = password.toByteArray()
+    val md = MessageDigest.getInstance("SHA-256")
+    val digest = md.digest(bytes)
+    return digest.fold("", { str, it -> str + "%02x".format(it) })
 }
 
 data class User(
@@ -506,9 +679,16 @@ fun saveUserToFirebase(context: Context, user: User, photoUri: Uri?) {
     val database = FirebaseDatabase.getInstance()
     val usersRef = database.getReference("Crushisen").child("user")
     val userId = usersRef.push().key // Génère une clé unique pour l'utilisateur
+
     userId?.let { uid ->
+        // Hacher le mot de passe avant de l'enregistrer
+        val hashedPassword = hashPassword(user.password)
+
+        // Remplacer le mot de passe d'origine par le mot de passe haché
+        val userWithHashedPassword = user.copy(password = hashedPassword)
+
         // Enregistrer l'utilisateur dans la base de données avec le chemin de l'image
-        usersRef.child(uid).setValue(user)
+        usersRef.child(uid).setValue(userWithHashedPassword)
             .addOnSuccessListener {
                 Log.d("Firebase", "User added successfully: $user")
 
@@ -570,7 +750,7 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
-                    onClick = { /* Handle login button click */ },
+                    onClick = { navigateToCreateLoginScreen(navController) },
                     modifier = Modifier.padding(8.dp),
                     content = {
                         Text(
