@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
@@ -38,11 +40,21 @@ class CardActivity : ComponentActivity() {
             CrushIsenTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFF58529), // Orange
+                                Color(0xFFDD2A7B), // Pink
+                                Color(0xFF8134AF), // Purple
+                                Color(0xFF515BD4)  // Blue
+                            )
+                        )
+                    ),
                 ) {
                     StyleCard(
                         imageResList = listOf(R.drawable.test_card, R.drawable.test_card2, R.drawable.test_card3), // Remplacez 'test_card1', 'test_card2', 'test_card3' par vos ressources images
-                        initialComment = "Commentaire initial à afficher"
+                        //initialComment = "Commentaire initial à afficher",
+                        username = "Username" // Replace with the actual username
                     )
                 }
             }
@@ -54,7 +66,7 @@ class CardActivity : ComponentActivity() {
 @Composable
 fun StyleCard(
     imageResList: List<Int>, // Liste des ID de ressources d'images
-    initialComment: String, // Commentaire initial à afficher
+    username: String, // Nom d'utilisateur à afficher
 ) {
     var liked by remember { mutableStateOf(false) } // État pour gérer si le post est aimé ou non
     var likesCount by remember { mutableStateOf(0) } // État pour gérer le nombre de likes
@@ -67,6 +79,20 @@ fun StyleCard(
             .padding(8.dp)
     ) {
         Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.icon_pp),
+                    contentDescription = "User Icon",
+                    modifier = Modifier
+                        .size(36.dp) // Increase the size here
+                        .padding(8.dp)
+                )
+                Text(
+                    text = username,
+                    style = MaterialTheme.typography.body1,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
             val pagerState = rememberPagerState(pageCount = { imageResList.size })
             HorizontalPager(state = pagerState, modifier = Modifier.height(200.dp).clickable { showDialog = true }) { page ->
                 Image(
@@ -79,10 +105,12 @@ fun StyleCard(
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = initialComment,
-                style = MaterialTheme.typography.body1,
-                modifier = Modifier.padding(8.dp)
+            Image(
+                painter = painterResource(id = R.drawable.icon_comment),
+                contentDescription = "Comment Icon",
+                modifier = Modifier
+                    .size(39.dp) // Set the size to be the same as the heart icon
+                    .padding(8.dp)
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -132,7 +160,8 @@ fun PreviewStyleCard() {
     CrushIsenTheme {
         StyleCard(
             imageResList = listOf(R.drawable.test_card, R.drawable.test_card2, R.drawable.test_card3), // Remplacez 'test_card1', 'test_card2', 'test_card3' par vos ressources images
-            initialComment = "test test test tessstttt"
+            //initialComment = "Commentaire :",
+            username = "Username" // Replace with the actual username
         )
     }
 }
