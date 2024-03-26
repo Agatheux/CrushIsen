@@ -4,7 +4,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material.Scaffold
+import androidx.compose.ui.Alignment
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
@@ -39,20 +42,22 @@ fun ProfileEditScreen() {
     //   val userId = auth.currentUser?.uid ?: ""
 
     val userId = "NtteAKPqJKUjejLcfbe"
-    //  val db = FirebaseDatabase.getInstance()
+
     //  val userRef = db.getReference().child("Crushisen").child("user")
     val userRef = db.getReference().child("Crushisen/user").child("-NttfMPa_iu22Z85a5WZ") // Remplacer par l'ID utilisateur correct
 
-
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") } // Si vous affichez le mot de passe actuel
     var pseudo by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var year by remember { mutableStateOf(0) }
     var adresse by remember { mutableStateOf("") }
     var dateNaissance by remember { mutableStateOf("") }
     var prenom by remember { mutableStateOf("") }
     var nom by remember { mutableStateOf("") }
+    var annee_a_lisen by remember { mutableStateOf("") }
 
     LaunchedEffect(key1 = userId) {
         if (userId.isNotEmpty()) {
@@ -66,7 +71,7 @@ fun ProfileEditScreen() {
                         email = it["email"].toString()
                         description = it["description"].toString()
                         phone = it["numero"].toString()
-                        year = (it["annee_a_lisen"] as? Long)?.toInt() ?: 0
+                        annee_a_lisen = it["annee_a_lisen"].toString()
                         adresse = it["adresse"].toString()
                         dateNaissance = it["date_naissance"].toString()
                         prenom = it["prenom"].toString()
@@ -92,19 +97,22 @@ fun ProfileEditScreen() {
     }
 
     Scaffold(
-        scaffoldState = scaffoldState,
-        topBar = { CenterAlignedTopAppBar(title = { Text("Edit Profile") }) }
+        topBar = { SmallTopAppBar(title = { Text("Edit Profile") }) }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(paddingValues).padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             OutlinedTextField(value = pseudo, onValueChange = { pseudo = it }, label = { Text("Pseudo") })
             OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
             OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
             OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") })
-            OutlinedTextField(value = year.toString(), onValueChange = { year = it.toIntOrNull() ?: 0 }, label = { Text("Year") })
+            OutlinedTextField(value = annee_a_lisen, onValueChange = { annee_a_lisen = it }, label = { Text("Année a l'ISEN") })
             OutlinedTextField(value = adresse, onValueChange = { adresse = it }, label = { Text("Adresse") })
             OutlinedTextField(value = dateNaissance, onValueChange = { dateNaissance = it }, label = { Text("Date de Naissance") })
             OutlinedTextField(value = prenom, onValueChange = { prenom = it }, label = { Text("Prenom") })
             OutlinedTextField(value = nom, onValueChange = { nom = it }, label = { Text("Nom") })
+
 
             Button(
                 onClick = {
@@ -113,7 +121,7 @@ fun ProfileEditScreen() {
                         "email" to email,
                         "description" to description,
                         "numero" to phone,
-                        "annee_a_lisen" to year,
+                        "annee_a_lisen" to annee_a_lisen,
                         "adresse" to adresse,
                         "date_naissance" to dateNaissance,
                         "prenom" to prenom,
@@ -139,6 +147,6 @@ fun ProfileEditScreen() {
             ) {
                 Text("Save")
             }
-        } // Fin de Column
-    } // Fin de Scaffold
-} // Fin de fr.isen.mullot.crushisen.ProfileEditScreen
+        }
+    }
+}
