@@ -14,6 +14,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CrushIsen"
         tools:targetApi="31">
+
+        <!-- MainActivity -->
         <activity
             android:name=".CardActivity"
             android:exported="false"
@@ -34,12 +36,21 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.CrushIsen">
+
+        </activity>
+
+        <!-- ProfileActivity -->
+        <activity
+            android:name=".ProfileActivity"
+            android:theme="@style/Theme.CrushIsen"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+
         <activity
             android:name=".ProfileActivity"
             android:theme="@style/Theme.CrushIsen" />
@@ -50,3 +61,4 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
 </manifest>
+
