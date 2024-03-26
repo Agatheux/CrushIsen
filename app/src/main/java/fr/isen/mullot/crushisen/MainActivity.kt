@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -37,10 +40,14 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.database
 import com.google.firebase.storage.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import java.util.UUID
+import com.google.firebase.database.ValueEventListener
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,8 +94,77 @@ fun CreateAccountPage(navController: NavController) {
     var descriptionValue by remember { mutableStateOf("") }
     var pseudoValue by remember { mutableStateOf("") }
     var emailValue by remember { mutableStateOf("") }
+    var passwordValue by remember { mutableStateOf("") }
+    var confirmPasswordValue by remember { mutableStateOf("") }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var showDialog by remember { mutableStateOf(false) }
+
+    // État pour gérer l'affichage de l'AlertDialog
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    // Fonction pour afficher l'AlertDialog en cas de saisie invalide
+    fun showErrorDialog(message: String) {
+        errorMessage = message
+        showErrorDialog = true
+    }
+
+    // Fonction pour valider que le numéro de téléphone ne contient que des chiffres
+    fun isValidPhoneNumber(phoneNumber: String): Boolean {
+        return phoneNumber.all { it.isDigit() }
+    }
+    // Fonction pour valider le format de la date de naissance (JJ/MM/AAAA)
+    fun isValidDateOfBirth(date: String): Boolean {
+        val datePattern = """\d{2}/\d{2}/\d{4}""".toRegex()
+        return date.matches(datePattern)
+    }
+    // Fonction pour valider que l'utilisateur a sélectionné une image
+    fun isImageSelected(photoUri: Uri?): Boolean {
+        return photoUri != null
+    }
+
+    // Fonction pour valider que les champs ne sont pas vides
+    fun isValidField(value: String, fieldName: String): Boolean {
+        return value.isNotBlank()
+    }
+
+    fun isValidPassword(password: String): Boolean {
+        val passwordPattern = Regex("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+!?=])(?=\\S+\$).{10,}$")
+        return passwordPattern.matches(password)
+    }
+
+    val database = Firebase.database
+    val usersRef = database.getReference("Crushisen").child("user")
+
+    // Fonction pour vérifier si l'adresse e-mail est déjà utilisée
+    fun isEmailAlreadyUsed(email: String, callback: (Boolean) -> Unit) {
+        usersRef.orderByChild("email").equalTo(email).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                callback(dataSnapshot.exists())
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                // Gérer les erreurs de base de données
+                callback(false)
+            }
+        })
+    }
+
+    // Fonction pour vérifier si le pseudo est déjà utilisé
+    fun isPseudoAlreadyUsed(pseudo: String, callback: (Boolean) -> Unit) {
+        usersRef.orderByChild("pseudo").equalTo(pseudo).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                callback(dataSnapshot.exists())
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                // Gérer les erreurs de base de données
+                callback(false)
+            }
+        })
+    }
+
+
 
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
@@ -141,6 +217,29 @@ fun CreateAccountPage(navController: NavController) {
                 onValueChange = { emailValue = it },
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value = passwordValue,
+                onValueChange = { passwordValue = it },
+                label = { Text("Mot de passe") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            )
+        }
+
+        // Champ pour la confirmation du mot de passe
+        item {
+            OutlinedTextField(
+                value = confirmPasswordValue,
+                onValueChange = { confirmPasswordValue = it },
+                label = { Text("Confirmation du mot de passe") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
         }
 
@@ -230,23 +329,114 @@ fun CreateAccountPage(navController: NavController) {
         item {
             Button(
                 onClick = {
-                    val user = User(
-                        adresse = adresseValue,
-                        annee_a_lisen = anneeLisenValue,
-                        date_naissance = dateNaissanceValue,
-                        description = descriptionValue,
-                        email = emailValue,
-                        nom = nomValue,
-                        numero = numeroValue,
-                        prenom = prenomValue,
-                        pseudo = pseudoValue
-                    )
-                    saveUserToFirebase(context = context, user = user, photoUri = photoUri)
-                    // Vérifiez si photoUri n'est pas nulle avant d'appeler la fonction
-                    photoUri?.let { uri ->
-                        uploadImageToFirebaseStorage(context = context, imageUri = uri)
+                    // Vérification de la sélection de l'image
+                    if (isImageSelected(photoUri)) {
+                        // Vérification du nom
+                        if (isValidField(nomValue, "Nom") &&
+                            isValidField(prenomValue, "Prénom") &&
+                            isValidField(adresseValue, "Adresse") &&
+                            isValidField(anneeLisenValue, "Année à l'ISEN") &&
+                            isValidField(descriptionValue, "Description") &&
+                            isValidField(pseudoValue, "Pseudo") &&
+                            isValidField(emailValue, "Email") &&
+                            isValidField(passwordValue, "Mot de passe") &&
+                            isValidField(confirmPasswordValue, "Confirmation du mot de passe")
+                        ) {
+                            // Vérification de la date de naissance
+                            if (isValidDateOfBirth(dateNaissanceValue)) {
+                                // Vérification du numéro de téléphone
+                                if (isValidPhoneNumber(numeroValue)) {
+                                    // Vérification de l'e-mail en utilisant la fonction isValidEmail
+                                    if (isValidEmail(emailValue)) {
+                                        // Vérification si l'e-mail est déjà utilisé
+                                        isEmailAlreadyUsed(emailValue) { isEmailUsed ->
+                                            if (!isEmailUsed) {
+                                                // Vérification si le pseudo est déjà utilisé
+                                                isPseudoAlreadyUsed(pseudoValue) { isPseudoUsed ->
+                                                    if (!isPseudoUsed) {
+                                                        // Vérification de la complexité du mot de passe
+                                                        if (isValidPassword(passwordValue)) {
+                                                            // Vérification si les mots de passe correspondent
+                                                            if (passwordValue == confirmPasswordValue) {
+                                                                val user = User(
+                                                                    adresse = adresseValue,
+                                                                    annee_a_lisen = anneeLisenValue,
+                                                                    date_naissance = dateNaissanceValue,
+                                                                    description = descriptionValue,
+                                                                    email = emailValue,
+                                                                    nom = nomValue,
+                                                                    numero = numeroValue,
+                                                                    prenom = prenomValue,
+                                                                    pseudo = pseudoValue,
+                                                                    password = passwordValue,
+                                                                )
+                                                                saveUserToFirebase(
+                                                                    context = context,
+                                                                    user = user,
+                                                                    photoUri = photoUri
+                                                                )
+                                                                // Vérifiez si photoUri n'est pas nulle avant d'appeler la fonction
+                                                                photoUri?.let { uri ->
+                                                                    uploadImageToFirebaseStorage(
+                                                                        context = context,
+                                                                        imageUri = uri
+                                                                    )
+                                                                }
+                                                                showDialog =
+                                                                    true // Afficher le dialog après la création du compte
+                                                            } else {
+                                                                // Afficher un message d'erreur si les mots de passe ne correspondent pas
+                                                                showErrorDialog("Les mots de passe ne correspondent pas.")
+                                                                Log.e(
+                                                                    "Validation",
+                                                                    "Mots de passe non correspondants"
+                                                                )
+                                                            }
+                                                        } else {
+                                                            // Afficher un message d'erreur si le mot de passe ne respecte pas les critères
+                                                            showErrorDialog("Le mot de passe doit contenir au moins 10 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.")
+                                                            Log.e(
+                                                                "Validation",
+                                                                "Mot de passe invalide"
+                                                            )
+                                                        }
+                                                    } else {
+                                                        // Afficher un message d'erreur si le pseudo est déjà utilisé
+                                                        showErrorDialog("Ce pseudo est déjà utilisé.")
+                                                        Log.e("Validation", "Pseudo déjà utilisé")
+                                                    }
+                                                }
+                                            } else {
+                                                // Afficher un message d'erreur si l'e-mail est déjà utilisé
+                                                showErrorDialog("Cette adresse e-mail est déjà associée à un compte.")
+                                                Log.e("Validation", "Email déjà utilisé")
+                                            }
+                                        }
+                                    } else {
+                                        // Afficher un message d'erreur pour l'e-mail invalide
+                                        showErrorDialog("Veuillez entrer une adresse e-mail valide.")
+                                        Log.e("Validation", "Email invalide")
+                                    }
+                                } else {
+                                    // Afficher un message d'erreur pour le numéro de téléphone invalide
+                                    showErrorDialog("Veuillez entrer un numéro de téléphone valide.")
+                                    Log.e("Validation", "Numéro de téléphone invalide")
+                                }
+                            } else {
+                                // Afficher un message d'erreur pour la date de naissance invalide
+                                showErrorDialog("Veuillez entrer une date de naissance au format JJ/MM/AAAA.")
+                                Log.e("Validation", "Date de naissance invalide")
+                            }
+                        } else {
+                            // Afficher un message d'erreur pour les champs obligatoires vides
+                            showErrorDialog("Veuillez remplir tous les champs.")
+                            Log.e("Validation", "Champ obligatoire vide")
+                        }
+                    } else {
+                        // Afficher un message d'erreur pour l'image non sélectionnée
+                        showErrorDialog("Veuillez sélectionner une image.")
+                        Log.e("Validation", "Image non sélectionnée")
                     }
-                    showDialog = true // Afficher le dialog après la création du compte
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -254,6 +444,20 @@ fun CreateAccountPage(navController: NavController) {
             }
         }
     }
+
+        // AlertDialog pour afficher le message d'erreur
+        if (showErrorDialog) {
+            AlertDialog(
+                onDismissRequest = { showErrorDialog = false },
+                title = { Text("Erreur") },
+                text = { Text(errorMessage) },
+                confirmButton = {
+                    Button(onClick = { showErrorDialog = false }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
 
         // Bloc pour afficher l'AlertDialog
     if (showDialog) {
@@ -279,6 +483,12 @@ fun CreateAccountPage(navController: NavController) {
     }
 }
 
+// Déclaration de la fonction isValidEmail en dehors du composant Composable
+fun isValidEmail(email: String): Boolean {
+    // Vérifie si l'email contient au moins '@' et '.'.
+    return email.contains("@") && (email.contains(".com") || email.contains(".fr"))
+}
+
 data class User(
     val adresse: String = "",
     val annee_a_lisen: String = "",
@@ -288,7 +498,8 @@ data class User(
     val nom: String = "",
     val numero: String = "",
     val prenom: String = "",
-    val pseudo: String = ""
+    val pseudo: String = "",
+    val password: String = "",
 )
 
 fun saveUserToFirebase(context: Context, user: User, photoUri: Uri?) {
