@@ -25,6 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -34,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -43,6 +47,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.google.firebase.firestore.FirebaseFirestore
@@ -209,35 +214,27 @@ class FeedViewModel : ViewModel() {
 
 @Composable
 fun ProfileEditScreen(navController: NavHostController) {
-    val scaffoldState = rememberScaffoldState()
+    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseDatabase.getInstance()
     val userId = auth.currentUser?.uid ?: ""
+    val userRef = db.getReference("Crushisen/user").child(userId)
 
-    val userRef = db.getReference().child("Crushisen/user").child(userId)
-    //val userRef = db.getReference().child("Crushisen/user").child("-NttfMPa_iu22Z85a5WZ") // Remplacer par l'ID utilisateur correct
-
+    var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") } // Si vous affichez le mot de passe actuel
+    var passwordChangeError by remember { mutableStateOf("") }
     var pseudo by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var adresse by remember { mutableStateOf("") }
-    var dateNaissance by remember { mutableStateOf("") }
-    var prenom by remember { mutableStateOf("") }
-    var nom by remember { mutableStateOf("") }
     var annee_a_lisen by remember { mutableStateOf("") }
-
 
     LaunchedEffect(key1 = userId) {
         if (userId.isNotEmpty()) {
-            userRef.addValueEventListener(object: ValueEventListener {
+            userRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // This method is called once with the initial value and again
-                    // whenever data at this location is updated.
                     val userData = snapshot.value as? Map<*, *>
                     userData?.let {
                         pseudo = it["pseudo"].toString()
@@ -245,27 +242,19 @@ fun ProfileEditScreen(navController: NavHostController) {
                         description = it["description"].toString()
                         phone = it["numero"].toString()
                         annee_a_lisen = it["annee_a_lisen"].toString()
-                        adresse = it["adresse"].toString()
-                        dateNaissance = it["date_naissance"].toString()
-                        prenom = it["prenom"].toString()
-                        nom = it["nom"].toString()
-
-
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ProfileEditScreen", "Failed to load user data: $error")
                     scope.launch {
-                        scaffoldState.snackbarHostState.showSnackbar(
+                        snackbarHostState.showSnackbar(
                             message = "Failed to load user data.",
-                            duration = androidx.compose.material.SnackbarDuration.Short
+                            duration = SnackbarDuration.Short
                         )
                     }
                 }
-
             })
-
         }
     }
 
@@ -273,6 +262,7 @@ fun ProfileEditScreen(navController: NavHostController) {
         topBar = {
             TopAppBar(title = { Text("Edit Profile") })
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             BottomNavBar(navController = navController)
         }
@@ -281,49 +271,120 @@ fun ProfileEditScreen(navController: NavHostController) {
             modifier = Modifier.padding(paddingValues).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // TextFields pour pseudo, email, etc...
             OutlinedTextField(value = pseudo, onValueChange = { pseudo = it }, label = { Text("Pseudo") })
             OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
             OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
             OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") })
             OutlinedTextField(value = annee_a_lisen, onValueChange = { annee_a_lisen = it }, label = { Text("Année a l'ISEN") })
-            OutlinedTextField(value = adresse, onValueChange = { adresse = it }, label = { Text("Adresse") })
-            OutlinedTextField(value = dateNaissance, onValueChange = { dateNaissance = it }, label = { Text("Date de Naissance") })
-            OutlinedTextField(value = prenom, onValueChange = { prenom = it }, label = { Text("Prenom") })
-            OutlinedTextField(value = nom, onValueChange = { nom = it }, label = { Text("Nom") })
+            OutlinedTextField(
+                value = oldPassword,
+                onValueChange = { oldPassword = it },
+                label = { Text("Ancien mot de passe") },
+                visualTransformation = PasswordVisualTransformation()
+            )
+            OutlinedTextField(
+                value = newPassword,
+                onValueChange = { newPassword = it },
+                label = { Text("Nouveau mot de passe") },
+                visualTransformation = PasswordVisualTransformation()
+            )
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = { Text("Confirmer le nouveau mot de passe") },
+                visualTransformation = PasswordVisualTransformation()
+            )
+
+            if (passwordChangeError.isNotEmpty()) {
+                Text(passwordChangeError, color = Color.Red)
+            }
 
 
             Button(
                 onClick = {
+// Mise à jour des informations de l'utilisateur
                     val userMap = hashMapOf(
                         "pseudo" to pseudo,
                         "email" to email,
                         "description" to description,
                         "numero" to phone,
-                        "annee_a_lisen" to annee_a_lisen,
-                        "adresse" to adresse,
-                        "date_naissance" to dateNaissance,
-                        "prenom" to prenom,
-                        "nom" to nom
+                        "annee_a_lisen" to annee_a_lisen
                     )
-                    userRef.setValue(userMap).addOnSuccessListener {
-                        scope.launch {
-                            scaffoldState.snackbarHostState.showSnackbar(
-                                message = "Profile updated successfully",
-                                duration = androidx.compose.material.SnackbarDuration.Short
-                            )
+                    val currentUser = auth.currentUser
+                    val userEmail = currentUser?.email ?: ""
+                    // Vérification si les champs de mot de passe sont remplis et correspondent
+                    if (oldPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
+                        if (newPassword == confirmPassword) {
+                            // Étape 1 : Re-authentification de l'utilisateur
+                            val credential = EmailAuthProvider.getCredential(userEmail, oldPassword)
+                            currentUser?.reauthenticate(credential)?.addOnCompleteListener { reauthTask ->
+                                if (reauthTask.isSuccessful) {
+                                    // Étape 2 : Mise à jour du mot de passe
+                                    currentUser.updatePassword(newPassword).addOnCompleteListener { updateTask ->
+                                        if (updateTask.isSuccessful) {
+                                            // Réinitialisation des champs de mot de passe après mise à jour
+                                            oldPassword = ""
+                                            newPassword = ""
+                                            confirmPassword = ""
+
+                                            // Mise à jour des autres informations de l'utilisateur
+                                            userRef.updateChildren(userMap as Map<String, Any>).addOnSuccessListener {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        "Profil et mot de passe mis à jour avec succès.",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                            }.addOnFailureListener {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(
+                                                        "Erreur lors de la mise à jour des informations du profil.",
+                                                        duration = SnackbarDuration.Short
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            passwordChangeError = "Erreur lors de la mise à jour du mot de passe."
+                                        }
+                                    }
+                                } else {
+                                    passwordChangeError = "L'ancien mot de passe est incorrect."
+                                }
+                            }
+                        } else {
+                            passwordChangeError = "Les nouveaux mots de passe ne correspondent pas."
                         }
-                    }.addOnFailureListener {
-                        scope.launch {
-                            scaffoldState.snackbarHostState.showSnackbar(
-                                message = "Failed to update profile",
-                                duration = androidx.compose.material.SnackbarDuration.Short
-                            )
+                    } else {
+                        // Mise à jour uniquement des autres informations si les champs de mot de passe ne sont pas utilisés
+                        userRef.updateChildren(userMap as Map<String, Any>).addOnSuccessListener {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "Profil mis à jour avec succès.",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }.addOnFailureListener {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "Erreur lors de la mise à jour du profil.",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
                         }
                     }
 
+                    if (passwordChangeError.isNotEmpty()) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                passwordChangeError,
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
                 }
             ) {
-                Text("Save")
+                Text("Mettre à jour")
             }
         }
     }
