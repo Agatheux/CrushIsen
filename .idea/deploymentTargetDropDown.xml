@@ -3,6 +3,19 @@
   <component name="deploymentTargetDropDown">
     <value>
       <entry key="app">
+      <entry key="BottomNavBarPreview">
+        <State />
+      </entry>
+      <entry key="CardActivity">
+        <State />
+      </entry>
+      <entry key="GreetingPreview2">
+        <State />
+      </entry>
+      <entry key="PreviewStyleCard">
+        <State />
+      </entry>
+      <entry key="app">
         <State />
       </entry>
     </value>
