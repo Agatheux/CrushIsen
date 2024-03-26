@@ -13,7 +13,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -22,17 +33,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,12 +67,12 @@ import com.google.firebase.auth.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 import com.google.firebase.storage.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
-import java.util.UUID
-import com.google.firebase.database.ValueEventListener
 import java.security.MessageDigest
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -179,7 +198,16 @@ fun CreateAccountPage(navController: NavController) {
         })
     }
 
-
+    val gradientBackground = Brush.linearGradient(
+        colors = listOf(Color(	0xfffd8487), Color(0xffb26ebe)),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 1000f)
+    )
+    Box(
+        modifier = Modifier
+            .background(brush = gradientBackground)
+            .fillMaxSize()
+    )
 
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
@@ -193,16 +221,21 @@ fun CreateAccountPage(navController: NavController) {
         }
     )
 
+
     LazyColumn(
         modifier = Modifier
-            .padding(16.dp)
-            .fillMaxSize()
+            .padding(20.dp)
+            .fillMaxSize(),
     ) {
         item {
             Text(
                 text = "Création de compte",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
+                style = androidx.compose.ui.text.TextStyle(
+                    color = Color.White),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
             )
         }
         item {
@@ -216,8 +249,12 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = prenomValue,
                         onValueChange = { prenomValue = it },
-                        label = { Text("Prénom") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text(
+                            text="Prénom",
+                            color=Color.White) },
+                        modifier
+                        = Modifier.fillMaxWidth()
+
                     )
                 }
                 item {
@@ -227,7 +264,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = nomValue,
                         onValueChange = { nomValue = it },
-                        label = { Text("Nom") },
+                        label = { Text(
+                            text="Nom",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -238,7 +277,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = emailValue,
                         onValueChange = { emailValue = it },
-                        label = { Text("Email") },
+                        label = { Text(
+                            text="Email",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -249,7 +290,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = passwordValue,
                         onValueChange = { passwordValue = it },
-                        label = { Text("Mot de passe") },
+                        label = { Text(
+                            text="Mot de passe",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
@@ -262,7 +305,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = confirmPasswordValue,
                         onValueChange = { confirmPasswordValue = it },
-                        label = { Text("Confirmation du mot de passe") },
+                        label = { Text(
+                            text="Confirmation du mot de passe",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
@@ -275,7 +320,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = dateNaissanceValue,
                         onValueChange = { dateNaissanceValue = it },
-                        label = { Text("Date de naissance") },
+                        label = { Text(
+                            text="Date de naissance",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -289,7 +336,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = adresseValue,
                         onValueChange = { adresseValue = it },
-                        label = { Text("Adresse") },
+                        label = { Text(
+                            text="Adresse",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -301,7 +350,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = anneeLisenValue,
                         onValueChange = { anneeLisenValue = it },
-                        label = { Text("Année à l'ISEN") },
+                        label = { Text(
+                            text="Année à l'ISEN",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -312,7 +363,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = numeroValue,
                         onValueChange = { numeroValue = it },
-                        label = { Text("Numéro de téléphone") },
+                        label = { Text(
+                            text="Numéro de téléphone",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -323,7 +376,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = descriptionValue,
                         onValueChange = { descriptionValue = it },
-                        label = { Text("Description") },
+                        label = { Text(
+                            text="Description",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -334,7 +389,9 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = pseudoValue,
                         onValueChange = { pseudoValue = it },
-                        label = { Text("Pseudo") },
+                        label = { Text(
+                            text="Pseudo",
+                            color=Color.White) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -346,7 +403,13 @@ fun CreateAccountPage(navController: NavController) {
                         onClick = { launcher.launch("image/*")  },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Télécharger une photo")
+                        Text(
+                            text="Télécharger une photo",
+                            style = androidx.compose.ui.text.TextStyle(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,)
+                            )
                     }
                 }
                 item {
@@ -377,7 +440,12 @@ fun CreateAccountPage(navController: NavController) {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Précédent")
+                    Text(
+                        text="Précédent",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xffd08ae0)
+                    )
                 }
             }
         }
@@ -393,7 +461,11 @@ fun CreateAccountPage(navController: NavController) {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Suivant")
+                    Text(
+                        text="Suivant",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xffd08ae0))
                 }
             }
         }
@@ -491,7 +563,11 @@ fun CreateAccountPage(navController: NavController) {
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Valider")
+                Text(
+                    text="Valider",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xffd08ae0))
             }
         }
     }
@@ -504,7 +580,10 @@ fun CreateAccountPage(navController: NavController) {
                 text = { Text(errorMessage) },
                 confirmButton = {
                     Button(onClick = { showErrorDialog = false }) {
-                        Text("OK")
+                        Text(
+                            text="OK",
+                            color = Color(0xffd08ae0)
+                        )
                     }
                 }
             )
@@ -587,6 +666,17 @@ fun CreateLoginPage(navController: NavController, context: Context) {
         )
     }
 
+    val gradientBackground = Brush.linearGradient(
+        colors = listOf(Color(	0xfffd8487), Color(0xffb26ebe)),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 1000f)
+    )
+    Box(
+        modifier = Modifier
+            .background(brush = gradientBackground)
+            .fillMaxSize()
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -597,7 +687,10 @@ fun CreateLoginPage(navController: NavController, context: Context) {
         OutlinedTextField(
             value = emailValue, // Utiliser emailValue ici
             onValueChange = { emailValue = it }, // Utiliser emailValue ici
-            label = { Text("Adresse e-mail") }, // Changer le libellé en "Adresse e-mail"
+            label = { Text(
+                text="Adresse e-mail", // Changer le libellé en "Adresse e-mail"
+                color = Color.White,
+                ) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
@@ -606,7 +699,9 @@ fun CreateLoginPage(navController: NavController, context: Context) {
         OutlinedTextField(
             value = passwordValue,
             onValueChange = { passwordValue = it },
-            label = { Text("Mot de passe") },
+            label = { Text(
+                text="Mot de passe",
+                color= Color.White) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier
@@ -623,7 +718,15 @@ fun CreateLoginPage(navController: NavController, context: Context) {
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            Text("Se connecter")
+            Text(
+                text="Se connecter",
+                style = androidx.compose.ui.text.TextStyle(
+                    color = Color(0xffd08ae0),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+
+                )
+            )
         }
     }
 }
@@ -714,49 +817,110 @@ fun saveUserToFirebase(context: Context, user: User, photoUri: Uri?) {
 
 @Composable
 fun LoginPage(navController: NavController = rememberNavController()) {
+    val gradientBackground = Brush.linearGradient(
+        colors = listOf(Color(	0xfffd8487), Color(0xffb26ebe)),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 1000f)
+    )
     MaterialTheme {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+            Box(
+                modifier = Modifier
+                    .background(brush = gradientBackground)
+                    .fillMaxSize()
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(150.dp)            )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Button(
-                    onClick = { navigateToCreateLoginScreen(navController) },
-                    modifier = Modifier.padding(8.dp),
-                    content = {
+                Column(
+                    verticalArrangement = Arrangement.Top,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.newlogodefini),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(100.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
                         Text(
-                            "Se connecter",
-                            color = Color.White // Couleur du texte blanc
+                            text = "CrushISEN",
+                            style = androidx.compose.ui.text.TextStyle(
+                                fontSize = 35.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            ),
                         )
                     }
-                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(200.dp))
 
-                Button(
-                    onClick = { navigateToCreateAccountScreen(navController) }, // Navigation vers la page de création de compte
-                    modifier = Modifier.padding(8.dp),
-                    content = {
-                        Text(
-                            "Créer un compte",
-                            color = Color.White // Couleur du texte blanc
+                    // Slogan
+                    Text(
+                        text = "Quand l'amour vous pénêtre",
+                        style = androidx.compose.ui.text.TextStyle(
+                            fontSize = 20.sp,
+                            color = Color.White
+                        ),
+                        modifier = Modifier.padding(bottom = 32.dp)
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 64.dp)
+                    ) {
+                        Button(
+                            onClick = { navigateToCreateLoginScreen(navController) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                ,
+                            content = {
+                                Text(
+                                    "Se connecter",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xffd08ae0)
+                                )
+                            }
+                        )
+
+                        Button(
+                            onClick = { navigateToCreateAccountScreen(navController) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            content = {
+                                Text(
+                                    "Créer un compte",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xffd08ae0)
+                                )
+                            }
                         )
                     }
-                )
+                }
             }
         }
     }
 }
+
+
+
+
+
+
+
+
+
 
 fun loadPhoto(context: Context, uri: Uri?, onBitmapLoaded: (ImageBitmap) -> Unit) {
     uri?.let { selectedUri ->
