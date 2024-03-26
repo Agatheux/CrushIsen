@@ -88,7 +88,8 @@ dependencies {
     implementation ("androidx.compose.material3:material3:1.0.0-alpha13")
    // implementation("com.example:generativeai:1.0.0")
 // Replace with the actual group, name, and version
-
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.23.0")
+    implementation("com.google.accompanist:accompanist-pager:0.23.0")
 
     implementation ("androidx.navigation:navigation-compose:2.4.0")
     implementation ("com.github.bumptech.glide:glide:4.12.0")

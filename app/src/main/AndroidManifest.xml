@@ -15,6 +15,11 @@
         android:theme="@style/Theme.CrushIsen"
         tools:targetApi="31">
         <activity
+            android:name=".CardActivity"
+            android:exported="false"
+            android:label="@string/title_activity_card"
+            android:theme="@style/Theme.CrushIsen" />
+        <activity
             android:name=".FeedActivity"
             android:exported="false"
             android:label="@string/title_activity_feed"
@@ -37,7 +42,7 @@
         </activity>
         <activity
             android:name=".ProfileActivity"
-            android:theme="@style/Theme.CrushIsen"/>
+            android:theme="@style/Theme.CrushIsen" />
     </application>
 
 </manifest>

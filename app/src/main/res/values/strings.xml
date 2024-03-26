@@ -3,4 +3,5 @@
     <string name="title_activity_bottom_nav">BottomNavActivity</string>
     <string name="title_activity_header">HeaderActivity</string>
     <string name="title_activity_feed">FeedActivity</string>
+    <string name="title_activity_card">CardActivity</string>
 </resources>
