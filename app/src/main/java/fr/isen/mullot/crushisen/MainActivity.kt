@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,6 +72,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 import com.google.firebase.storage.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
+import kotlinx.coroutines.delay
 import java.security.MessageDigest
 import java.util.UUID
 
@@ -91,19 +93,48 @@ class MainActivity : ComponentActivity() {
 fun MyApp() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "main") {
+    NavHost(navController = navController, startDestination = "splash") {
+        composable("splash") {
+            SplashScreen(navController)
+        }
         composable("main") {
             LoginPage(navController)
         }
         composable("createAccount") {
             CreateAccountPage(navController)
         }
-
         composable("login") {
             CreateLoginPage(navController, LocalContext.current)
         }
     }
 }
+@Composable
+fun SplashScreen(navController: NavController) {
+    LaunchedEffect(Unit) {
+        delay(5000) // Attente de 5 secondes
+        navController.navigate("main") // Naviguer vers la destination principale
+    }
+
+    val gradientBackground = Brush.linearGradient(
+        colors = listOf(Color(	0xfffd8487), Color(0xffb26ebe)),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 1000f)
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(gradientBackground), // Fond blanc
+        contentAlignment = Alignment.Center
+    ) {
+        // Afficher votre image ici
+        Image(
+            painter = painterResource(id = R.drawable.newlogodefini), // Remplacez "votre_image" par le nom de votre image dans les ressources
+            contentDescription = null, // Description facultative de l'image
+            modifier = Modifier.size(200.dp) // Taille de l'image
+        )
+    }
+}
+
 
 fun navigateToCreateAccountScreen(navController: NavController) {
     navController.navigate("createAccount")
