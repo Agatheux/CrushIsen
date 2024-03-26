@@ -53,7 +53,7 @@ import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import java.util.UUID
 import com.google.firebase.database.ValueEventListener
 import java.security.MessageDigest
-
+import com.google.firebase.auth.FirebaseAuth
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -657,7 +657,8 @@ data class User(
 fun saveUserToFirebase(context: Context, user: User, photoUri: Uri?) {
     val database = FirebaseDatabase.getInstance()
     val usersRef = database.getReference("Crushisen").child("user")
-    val userId = usersRef.push().key // Génère une clé unique pour l'utilisateur
+    val auth = FirebaseAuth.getInstance()
+    val userId =  auth.currentUser?.uid ?: ""
 
     userId?.let { uid ->
         // Hacher le mot de passe avant de l'enregistrer
