@@ -1,5 +1,6 @@
 package fr.isen.mullot.crushisen
 
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -402,7 +403,7 @@ fun CreateAccountPage(navController: NavController) {
                 onClick = {
                     // Vérification de la sélection de l'image
                     if (isImageSelected(photoUri)) {
-                        // Vérification du nom
+                        // Vérification des autres champs
                         if (isValidField(nomValue, "Nom") &&
                             isValidField(prenomValue, "Prénom") &&
                             isValidField(adresseValue, "Adresse") &&
@@ -419,70 +420,48 @@ fun CreateAccountPage(navController: NavController) {
                                 if (isValidPhoneNumber(numeroValue)) {
                                     // Vérification de l'e-mail en utilisant la fonction isValidEmail
                                     if (isValidEmail(emailValue)) {
-                                        // Vérification si l'e-mail est déjà utilisé
-                                        isEmailAlreadyUsed(emailValue) { isEmailUsed ->
-                                            if (!isEmailUsed) {
-                                                // Vérification si le pseudo est déjà utilisé
-                                                isPseudoAlreadyUsed(pseudoValue) { isPseudoUsed ->
-                                                    if (!isPseudoUsed) {
-                                                        // Vérification de la complexité du mot de passe
-                                                        if (isValidPassword(passwordValue)) {
-                                                            // Vérification si les mots de passe correspondent
-                                                            if (passwordValue == confirmPasswordValue) {
-                                                                val user = User(
-                                                                    adresse = adresseValue,
-                                                                    annee_a_lisen = anneeLisenValue,
-                                                                    date_naissance = dateNaissanceValue,
-                                                                    description = descriptionValue,
-                                                                    email = emailValue,
-                                                                    nom = nomValue,
-                                                                    numero = numeroValue,
-                                                                    prenom = prenomValue,
-                                                                    pseudo = pseudoValue,
-                                                                    password = passwordValue,
-                                                                )
-                                                                saveUserToFirebase(
-                                                                    context = context,
-                                                                    user = user,
-                                                                    photoUri = photoUri
-                                                                )
-                                                                // Vérifiez si photoUri n'est pas nulle avant d'appeler la fonction
-                                                                photoUri?.let { uri ->
-                                                                    uploadImageToFirebaseStorage(
-                                                                        context = context,
-                                                                        imageUri = uri
-                                                                    )
-                                                                }
-                                                                showDialog =
-                                                                    true // Afficher le dialog après la création du compte
-                                                            } else {
-                                                                // Afficher un message d'erreur si les mots de passe ne correspondent pas
-                                                                showErrorDialog("Les mots de passe ne correspondent pas.")
-                                                                Log.e(
-                                                                    "Validation",
-                                                                    "Mots de passe non correspondants"
-                                                                )
-                                                            }
-                                                        } else {
-                                                            // Afficher un message d'erreur si le mot de passe ne respecte pas les critères
-                                                            showErrorDialog("Le mot de passe doit contenir au moins 10 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.")
-                                                            Log.e(
-                                                                "Validation",
-                                                                "Mot de passe invalide"
+                                        // Création de l'utilisateur dans Firebase Authentication
+                                        Firebase.auth.createUserWithEmailAndPassword(emailValue, passwordValue)
+                                            .addOnCompleteListener { task ->
+                                                if (task.isSuccessful) {
+                                                    // L'utilisateur a été créé avec succès
+                                                    val user = User(
+                                                        adresse = adresseValue,
+                                                        annee_a_lisen = anneeLisenValue,
+                                                        date_naissance = dateNaissanceValue,
+                                                        description = descriptionValue,
+                                                        email = emailValue,
+                                                        nom = nomValue,
+                                                        numero = numeroValue,
+                                                        prenom = prenomValue,
+                                                        pseudo = pseudoValue,
+                                                        password = passwordValue,
+                                                    )
+
+                                                    // Enregistrement de l'utilisateur dans Firestore
+                                                    saveUserToFirebase(
+                                                        context = context,
+                                                        user = user,
+                                                        photoUri = photoUri
+                                                    )
+                                                        // Vérification si photoUri n'est pas nulle avant d'appeler la fonction
+                                                        photoUri?.let { uri ->
+                                                            // Téléchargement de l'image dans Firebase Storage
+                                                            uploadImageToFirebaseStorage(
+                                                                context = context,
+                                                                imageUri = uri
                                                             )
                                                         }
-                                                    } else {
-                                                        // Afficher un message d'erreur si le pseudo est déjà utilisé
-                                                        showErrorDialog("Ce pseudo est déjà utilisé.")
-                                                        Log.e("Validation", "Pseudo déjà utilisé")
-                                                    }
+
+
+                                                    showDialog = true // Afficher le dialog après la création du compte
+                                                } else {
+                                                    // Une erreur s'est produite lors de la création de l'utilisateur
+                                                    val errorMessage = task.exception?.message ?: "Une erreur s'est produite lors de la création de l'utilisateur."
+                                                    showErrorDialog(errorMessage)
+                                                    Log.e(TAG, "Error creating user: $errorMessage")
                                                 }
-                                            } else {
-                                                // Afficher un message d'erreur si l'e-mail est déjà utilisé
-                                                showErrorDialog("Cette adresse e-mail est déjà associée à un compte.")
-                                                Log.e("Validation", "Email déjà utilisé")
                                             }
-                                        }
                                     } else {
                                         // Afficher un message d'erreur pour l'e-mail invalide
                                         showErrorDialog("Veuillez entrer une adresse e-mail valide.")
