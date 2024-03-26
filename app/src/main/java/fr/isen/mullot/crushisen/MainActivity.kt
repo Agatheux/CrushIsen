@@ -61,6 +61,8 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -633,7 +635,7 @@ fun CreateLoginPage(navController: NavController, context: Context) {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             val pseudo = snapshot.child("pseudo").value as? String ?: ""
                             // Naviguez vers FeedActivity avec le pseudo de l'utilisateur
-                            val intent = Intent(context, ProfileActivity::class.java).apply {
+                            val intent = Intent(context, FeedActivity::class.java).apply {
                                 putExtra("pseudo", pseudo)
                             }
                             context.startActivity(intent)
@@ -759,7 +761,8 @@ data class User(
 fun saveUserToFirebase(context: Context, user: User, photoUri: Uri?) {
     val database = FirebaseDatabase.getInstance()
     val usersRef = database.getReference("Crushisen").child("user")
-    val userId = usersRef.push().key // Génère une clé unique pour l'utilisateur
+    val auth = FirebaseAuth.getInstance()
+    val userId = auth.currentUser?.uid ?: ""
 
     userId?.let { uid ->
         // Hacher le mot de passe avant de l'enregistrer

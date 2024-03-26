@@ -1,4 +1,5 @@
 <resources>
+
     <style name="Theme.CrushIsen" parent="android:Theme.Material.Light.NoActionBar">
         <!-- Couleur primaire utilisée par les composants de l'interface utilisateur, tels que les boutons. -->
         <item name="colorPrimary">#FF6200EE</item>
