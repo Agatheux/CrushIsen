@@ -98,7 +98,9 @@ fun HomePage(onNavigate: () -> Unit) {
     Scaffold(
         content = {
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -475,7 +477,9 @@ fun BottomNavBar(navController: NavHostController) {
             }
         ) { paddingValues ->
             Column(
-                modifier = Modifier.padding(paddingValues).padding(16.dp),
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // TextFields pour pseudo, email, etc...
@@ -602,6 +606,49 @@ fun BottomNavBar(navController: NavHostController) {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @Composable
     fun FeedEditScreen(navController: NavHostController) {
+        val db = FirebaseDatabase.getInstance()
+        Log.d("Firebase", "Database instance created")
+
+        // Obtenez une référence à la collection de posts et limitez les résultats aux 10 premiers
+        val postRef = db.getReference("Crushisen/post").limitToFirst(10)
+        Log.d("Firebase", "Post reference created")
+        Log.d("Firebase", "Post reference: $postRef")
+
+        postRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("Firebase", "Data received: $snapshot")
+                // Vérifiez que le snapshot contient des données
+                if (snapshot.exists()) {
+                    // Parcourez chaque post dans le snapshot
+                    snapshot.children.forEach { postSnapshot ->
+                        // Convertissez le post en une Map et récupérez les données
+                        val postData = postSnapshot.value as? Map<*, *>
+                        Log.d("Firebase", "Post data: $postData")
+                        postData?.let {
+                            val ID_user = it["ID_user"].toString()
+                            val description = it["description"].toString()
+                            val like = it["like"].toString().toInt()
+                            val photos = it["photos"] as? List<String> ?: listOf()
+
+                            // Utilisez les données ici
+                            Log.d("Firebase", "ID_user: $ID_user")
+                            Log.d("Firebase", "description: $description")
+                            Log.d("Firebase", "like: $like")
+                            photos.forEachIndexed { index, photoUrl ->
+                                Log.d("Firebase", "photo[$index]: $photoUrl")
+                            }
+                        }
+                    }
+                } else {
+                    Log.d("Firebase", "No data available")
+                }
+            }
+
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
+            }
+        })
         CrushIsenTheme {
     Scaffold(
         bottomBar = {
