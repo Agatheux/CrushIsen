@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -83,6 +84,14 @@ import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import kotlinx.coroutines.launch
+
+data class Post(
+    val ID_user: String,
+    val description: String,
+    val like: Int,
+    val photos: List<String>
+)
+
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun HomePage(onNavigate: () -> Unit) {
@@ -188,6 +197,7 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                             createPost(context, userId, description.value, imageUri.toString())
                             Toast.makeText(context, "Post created successfully", Toast.LENGTH_SHORT).show()
                             onBack() // Navigate back after posting
+                            onBack() // Navigate back after posting
                         } else {
                             Toast.makeText(context, "Please select an image", Toast.LENGTH_SHORT).show()
                         }
@@ -224,9 +234,7 @@ class FeedActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 
 
-class FeedActivity : ComponentActivity() {
-    // rest of your code
-}
+
 
 
 
@@ -595,30 +603,31 @@ fun BottomNavBar(navController: NavHostController) {
     @Composable
     fun FeedEditScreen(navController: NavHostController) {
         CrushIsenTheme {
-            Scaffold(
-                bottomBar = {
-                    BottomNavBar(navController = navController)
-                },
-                topBar = {
-                    FeedHeader(userName = "Lost")
-                },
-                content = { paddingValues ->
-                    // Utiliser paddingValues pour respecter le padding requis par topBar et bottomBar
-                    androidx.compose.material.Surface(
-                        Modifier
-                            .padding(paddingValues) // Appliquer le padding global fourni par le Scaffold
-                            .padding(horizontal = 8.dp) // Vous pouvez toujours ajouter vos propres paddings en plus
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0xFFF58529), // Orange
-                                        Color(0xFFDD2A7B), // Pink
-                                        Color(0xFF8134AF), // Purple
-                                        Color(0xFF515BD4)  // Blue
-                                    )
-                                )
-                            ),
-                    ) {
+    Scaffold(
+        bottomBar = {
+            BottomNavBar(navController = navController)
+        },
+        topBar = {
+            FeedHeader(userName = "Lost")
+        },
+        content = { paddingValues ->
+            Surface(
+                Modifier
+                    .padding(paddingValues)
+                    .padding(horizontal = 8.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFF58529),
+                                Color(0xFFDD2A7B),
+                                Color(0xFF8134AF),
+                                Color(0xFF515BD4)
+                            )
+                        )
+                    ),
+            ) {
+                LazyColumn {
+                    item {
                         StyleCard(
                             imageResList = listOf(
                                 R.drawable.test_card,
@@ -628,9 +637,33 @@ fun BottomNavBar(navController: NavHostController) {
                             username = "Crushisen" // Nom d'utilisateur à afficher
                         )
                     }
+
+                    item {
+                        StyleCard(
+                            imageResList = listOf(
+                                R.drawable.test_card,
+                                R.drawable.test_card2,
+                                R.drawable.test_card3
+                            ),
+                            username = "coucou" // Nom d'utilisateur à afficher
+                        )
+                    }
+
+                    item {
+                        StyleCard(
+                            imageResList = listOf(
+                                R.drawable.test_card,
+                                R.drawable.test_card2,
+                                R.drawable.test_card3
+                            ),
+                            username = "coucou" // Nom d'utilisateur à afficher
+                        )
+                    }
                 }
-            )
+            }
         }
+    )
+}
 
 
 
