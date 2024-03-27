@@ -14,7 +14,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,9 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
@@ -50,6 +48,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,6 +81,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.storage.FirebaseStorage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import kotlinx.coroutines.launch
 
@@ -111,25 +111,64 @@ fun HomePage(onNavigate: () -> Unit) {
         }
     )
 }
-private fun createPost(context: Context, userId: String, description: String, photoUrl: String) {
-    val postId = FirebaseDatabase.getInstance().getReference("Crushisen").child("post").push().key ?: return
-    val post = hashMapOf(
-        "ID_user" to userId,
-        "description" to description,
-        "like" to 0,
-        "photo" to photoUrl  // Note the single image URL, not a list
-    )
 
-    FirebaseDatabase.getInstance().getReference("Crushisen")
-        .child("post")
-        .child(postId)
-        .setValue(post)
-        .addOnSuccessListener {
-            Toast.makeText(context, "Post created successfully", Toast.LENGTH_SHORT).show()
+
+// Fonction modifiée pour créer un post avec téléchargement d'images
+fun createPost(context: Context, userId: String, description: String, imageUris: List<Uri>) {
+    // Génère un ID unique pour le post
+    val postId = FirebaseDatabase.getInstance().getReference("Crushisen").child("post").push().key ?: return
+
+    // Chemin vers le stockage des images
+    val storageRef = FirebaseStorage.getInstance().reference.child("postImages/$postId")
+
+    val uploadedImageUrls = mutableListOf<String>()
+    var uploadCount = 0  // Pour suivre le nombre d'images téléchargées
+
+    // Boucle sur chaque URI d'image et télécharge les images sur Firebase Storage
+    for (imageUri in imageUris) {
+        val individualImageRef = storageRef.child("${imageUri.lastPathSegment}")
+        individualImageRef.putFile(imageUri).continueWithTask { task ->
+            if (!task.isSuccessful) {
+                task.exception?.let {
+                    throw it
+                }
+            }
+            individualImageRef.downloadUrl
+        }.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val downloadUri = task.result.toString()
+                uploadedImageUrls.add(downloadUri)
+
+                // Vérifie si toutes les images ont été téléchargées
+                uploadCount++
+                if (uploadCount == imageUris.size) {
+                    // Crée un post après que toutes les images aient été téléchargées
+                    val post = hashMapOf(
+                        "ID_user" to userId,
+                        "description" to description,
+                        "like" to 0,
+                        "photos" to uploadedImageUrls
+                    )
+                    Log.d("CreatePost", "Post apres les images download: $post")
+
+                    // Ajoute le post à Firebase Realtime Database
+                    FirebaseDatabase.getInstance().getReference("Crushisen")
+                        .child("post")
+                        .child(postId)
+                        .setValue(post)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Post created successfully", Toast.LENGTH_SHORT).show()
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(context, "Failed to create post", Toast.LENGTH_SHORT).show()
+                        }
+                }
+            } else {
+                // Gère les échecs de téléchargement
+                Toast.makeText(context, "Failed to upload image", Toast.LENGTH_SHORT).show()
+            }
         }
-        .addOnFailureListener {
-            Toast.makeText(context, "Failed to create post", Toast.LENGTH_SHORT).show()
-        }
+    }
 }
 
 @Composable
@@ -137,11 +176,10 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
     val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
     val description = remember { mutableStateOf("") }
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-        onResult = { uri: Uri? -> imageUri = uri }
-    )
+    var imageUris by remember { mutableStateOf(emptyList<Uri>()) } // List of URIs val launcher = rememberLauncherForActivityResult(
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { imageUris = imageUris + it }
+    }
 
     Scaffold(
         topBar = {
@@ -173,14 +211,14 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                     Text("Choose Image")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { imageUri = null },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Remove Image")
-                }
+              Button(
+    onClick = { imageUris = emptyList() }, // Set imageUris to a new empty list
+    modifier = Modifier.fillMaxWidth()
+) {
+    Text("Remove Images")
+}
                 Spacer(modifier = Modifier.height(16.dp))
-                imageUri?.let { uri ->
+                imageUris.forEach { uri -> // Display each selected image
                     Image(
                         painter = rememberImagePainter(data = uri),
                         contentDescription = "Selected Image",
@@ -192,11 +230,12 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+
                 Button(
                     onClick = {
                         val userId = auth.currentUser?.uid ?: ""
-                        if (imageUri != null) {
-                            createPost(context, userId, description.value, imageUri.toString())
+                        if (imageUris.isNotEmpty()) {
+                            createPost(context, userId, description.value, imageUris.map { it }) // Pass the list of URIs as strings
                             Toast.makeText(context, "Post created successfully", Toast.LENGTH_SHORT).show()
                             onBack() // Navigate back after posting
                             onBack() // Navigate back after posting
@@ -236,134 +275,152 @@ class FeedActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 
 
+    @Composable
+    fun FeedActivityContent() {
+        val navController = rememberNavController()
+        val context = LocalContext.current
 
-
-
-
-
-@Composable
-fun FeedActivityContent() {
-    val navController = rememberNavController()
-    val context = LocalContext.current
-
-    NavHost(navController = navController, startDestination = "feed") {
-        composable("feed") {
-            FeedEditScreen(navController)
-        }
-        composable("profile") {
-            ProfileEditScreen(navController)
-        }
-        composable("notification") {
-            NotificationEditScreen(navController)
-        }
-        composable("homePage") {
-            HomePage(onNavigate = { navController.navigate("createPost") })
-        }
-        composable("createPost") {
-            CreatePostPage(context = context, onBack = { navController.popBackStack() })
-        }
-    }
-}
-
-
-
-@Composable
-fun NotificationEditScreen(navController: NavHostController){
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colors.background
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            MainHeader(userName = "YourUserName")
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            BottomNavBar(navController = navController)
-        }
-    }
-}
-
-
-   @Composable
-fun BottomNavBar(navController: NavHostController) {
-    // State to track the selected item in the BottomNavBar
-    val selectedItem = remember { mutableStateOf("Feed") }
-
-    // Navigation listener to change the selected item based on the current destination
-    navController.addOnDestinationChangedListener { _, destination, _ ->
-        selectedItem.value = when (destination.route) {
-            "feed" -> "Feed"
-            "profile" -> "Profile"
-            "notification" -> "Notification"
-            "homePage" -> "HomePage" // Change this line
-            else -> "Feed" // Set a default value
+        NavHost(navController = navController, startDestination = "feed") {
+            composable("feed") {
+                FeedEditScreen(navController)
+            }
+            composable("profile") {
+                ProfileEditScreen(navController)
+            }
+            composable("notification") {
+                NotificationEditScreen(navController)
+            }
+            composable("homePage") {
+                HomePage(onNavigate = { navController.navigate("createPost") })
+            }
+            composable("createPost") {
+                CreatePostPage(context = context, onBack = { navController.popBackStack() })
+            }
         }
     }
 
-    // Navigation to the "Feed" destination when the "Feed" item is selected
-    fun navigateToFeed() {
-        selectedItem.value = "Feed"
-        navController.navigate("feed")
-    }
 
-    // Navigation to the "Profile" destination when the "Profile" item is selected
-    fun navigateToProfile() {
-        selectedItem.value = "Profile"
-        navController.navigate("profile")
-    }
+    @Composable
+    fun NotificationEditScreen(navController: NavHostController) {
 
-    // Navigation to the "Notification" destination when the "Notification" item is selected
-    fun navigateToNotification() {
-        selectedItem.value = "Notification"
-        navController.navigate("notification")
-    }
-
-    // Navigation to the "HomePage" destination when the "HomePage" item is selected
-    fun navigateToHomePage() { // Change this function
-        selectedItem.value = "HomePage"
-        navController.navigate("homePage") // Change this line
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RectangleShape,
-        border = BorderStroke(1.dp, Color.Gray)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colors.background
         ) {
-            // Navigation item for "Feed"
-            NavigationRailItem(
-                selected = selectedItem.value == "Feed",
-                onClick = { navigateToFeed() },
-                icon = { Icon(painterResource(id = R.drawable.icon_home), contentDescription = null, Modifier.size(24.dp)) },
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                MainHeader(userName = "YourUserName")
 
-            // Navigation item for "Notification"
-            NavigationRailItem(
-                selected = selectedItem.value == "Notification",
-                onClick = { navigateToNotification() },
-                icon = { Icon(painterResource(id = R.drawable.icon_alert), contentDescription = null, Modifier.size(24.dp)) },
-            )
+                Spacer(modifier = Modifier.weight(1f))
 
-            // Navigation item for "Profile"
-            NavigationRailItem(
-                selected = selectedItem.value == "Profile",
-                onClick = { navigateToProfile() },
-                icon = { Icon(painterResource(id = R.drawable.icon_settings), contentDescription = null, Modifier.size(24.dp)) },
-            )
-
-            // Navigation item for "HomePage"
-            NavigationRailItem(
-                selected = selectedItem.value == "HomePage", // Change this line
-                onClick = { navigateToHomePage() }, // Change this line
-                icon = { Icon(painterResource(id = R.drawable.icon_post), contentDescription = null, Modifier.size(24.dp)) },
-            )
+                BottomNavBar(navController = navController)
+            }
         }
     }
-}
+
+
+    @Composable
+    fun BottomNavBar(navController: NavHostController) {
+        // State to track the selected item in the BottomNavBar
+        val selectedItem = remember { mutableStateOf("Feed") }
+
+        // Navigation listener to change the selected item based on the current destination
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            selectedItem.value = when (destination.route) {
+                "feed" -> "Feed"
+                "profile" -> "Profile"
+                "notification" -> "Notification"
+                "homePage" -> "HomePage" // Change this line
+                else -> "Feed" // Set a default value
+            }
+        }
+
+        // Navigation to the "Feed" destination when the "Feed" item is selected
+        fun navigateToFeed() {
+            selectedItem.value = "Feed"
+            navController.navigate("feed")
+        }
+
+        // Navigation to the "Profile" destination when the "Profile" item is selected
+        fun navigateToProfile() {
+            selectedItem.value = "Profile"
+            navController.navigate("profile")
+        }
+
+        // Navigation to the "Notification" destination when the "Notification" item is selected
+        fun navigateToNotification() {
+            selectedItem.value = "Notification"
+            navController.navigate("notification")
+        }
+
+        // Navigation to the "HomePage" destination when the "HomePage" item is selected
+        fun navigateToHomePage() { // Change this function
+            selectedItem.value = "HomePage"
+            navController.navigate("homePage") // Change this line
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RectangleShape,
+            border = BorderStroke(1.dp, Color.Gray)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Navigation item for "Feed"
+                NavigationRailItem(
+                    selected = selectedItem.value == "Feed",
+                    onClick = { navigateToFeed() },
+                    icon = {
+                        Icon(
+                            painterResource(id = R.drawable.icon_home),
+                            contentDescription = null,
+                            Modifier.size(24.dp)
+                        )
+                    },
+                )
+
+                // Navigation item for "Notification"
+                NavigationRailItem(
+                    selected = selectedItem.value == "Notification",
+                    onClick = { navigateToNotification() },
+                    icon = {
+                        Icon(
+                            painterResource(id = R.drawable.icon_alert),
+                            contentDescription = null,
+                            Modifier.size(24.dp)
+                        )
+                    },
+                )
+
+                // Navigation item for "Profile"
+                NavigationRailItem(
+                    selected = selectedItem.value == "Profile",
+                    onClick = { navigateToProfile() },
+                    icon = {
+                        Icon(
+                            painterResource(id = R.drawable.icon_settings),
+                            contentDescription = null,
+                            Modifier.size(24.dp)
+                        )
+                    },
+                )
+
+                // Navigation item for "HomePage"
+                NavigationRailItem(
+                    selected = selectedItem.value == "HomePage", // Change this line
+                    onClick = { navigateToHomePage() }, // Change this line
+                    icon = {
+                        Icon(
+                            painterResource(id = R.drawable.icon_post),
+                            contentDescription = null,
+                            Modifier.size(24.dp)
+                        )
+                    },
+                )
+            }
+        }
+    }
 
 
     @Composable
@@ -483,11 +540,26 @@ fun BottomNavBar(navController: NavHostController) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // TextFields pour pseudo, email, etc...
-                OutlinedTextField(value = pseudo, onValueChange = { pseudo = it }, label = { Text("Pseudo") })
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
-                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") })
-                OutlinedTextField(value = annee_a_lisen, onValueChange = { annee_a_lisen = it }, label = { Text("Année a l'ISEN") })
+                OutlinedTextField(
+                    value = pseudo,
+                    onValueChange = { pseudo = it },
+                    label = { Text("Pseudo") })
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") })
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") })
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Phone") })
+                OutlinedTextField(
+                    value = annee_a_lisen,
+                    onValueChange = { annee_a_lisen = it },
+                    label = { Text("Année a l'ISEN") })
                 OutlinedTextField(
                     value = oldPassword,
                     onValueChange = { oldPassword = it },
@@ -528,61 +600,69 @@ fun BottomNavBar(navController: NavHostController) {
                         if (oldPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
                             if (newPassword == confirmPassword) {
                                 // Étape 1 : Re-authentification de l'utilisateur
-                                val credential = EmailAuthProvider.getCredential(userEmail, oldPassword)
-                                currentUser?.reauthenticate(credential)?.addOnCompleteListener { reauthTask ->
-                                    if (reauthTask.isSuccessful) {
-                                        // Étape 2 : Mise à jour du mot de passe
-                                        currentUser.updatePassword(newPassword).addOnCompleteListener { updateTask ->
-                                            if (updateTask.isSuccessful) {
-                                                // Réinitialisation des champs de mot de passe après mise à jour
-                                                oldPassword = ""
-                                                newPassword = ""
-                                                confirmPassword = ""
+                                val credential =
+                                    EmailAuthProvider.getCredential(userEmail, oldPassword)
+                                currentUser?.reauthenticate(credential)
+                                    ?.addOnCompleteListener { reauthTask ->
+                                        if (reauthTask.isSuccessful) {
+                                            // Étape 2 : Mise à jour du mot de passe
+                                            currentUser.updatePassword(newPassword)
+                                                .addOnCompleteListener { updateTask ->
+                                                    if (updateTask.isSuccessful) {
+                                                        // Réinitialisation des champs de mot de passe après mise à jour
+                                                        oldPassword = ""
+                                                        newPassword = ""
+                                                        confirmPassword = ""
 
-                                                // Mise à jour des autres informations de l'utilisateur
-                                                userRef.updateChildren(userMap as Map<String, Any>).addOnSuccessListener {
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar(
-                                                            "Profil et mot de passe mis à jour avec succès.",
-                                                            duration = SnackbarDuration.Short
-                                                        )
-                                                    }
-                                                }.addOnFailureListener {
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar(
-                                                            "Erreur lors de la mise à jour des informations du profil.",
-                                                            duration = SnackbarDuration.Short
-                                                        )
+                                                        // Mise à jour des autres informations de l'utilisateur
+                                                        userRef.updateChildren(userMap as Map<String, Any>)
+                                                            .addOnSuccessListener {
+                                                                scope.launch {
+                                                                    snackbarHostState.showSnackbar(
+                                                                        "Profil et mot de passe mis à jour avec succès.",
+                                                                        duration = SnackbarDuration.Short
+                                                                    )
+                                                                }
+                                                            }.addOnFailureListener {
+                                                                scope.launch {
+                                                                    snackbarHostState.showSnackbar(
+                                                                        "Erreur lors de la mise à jour des informations du profil.",
+                                                                        duration = SnackbarDuration.Short
+                                                                    )
+                                                                }
+                                                            }
+                                                    } else {
+                                                        passwordChangeError =
+                                                            "Erreur lors de la mise à jour du mot de passe."
                                                     }
                                                 }
-                                            } else {
-                                                passwordChangeError = "Erreur lors de la mise à jour du mot de passe."
-                                            }
+                                        } else {
+                                            passwordChangeError =
+                                                "L'ancien mot de passe est incorrect."
                                         }
-                                    } else {
-                                        passwordChangeError = "L'ancien mot de passe est incorrect."
                                     }
-                                }
                             } else {
-                                passwordChangeError = "Les nouveaux mots de passe ne correspondent pas."
+                                passwordChangeError =
+                                    "Les nouveaux mots de passe ne correspondent pas."
                             }
                         } else {
                             // Mise à jour uniquement des autres informations si les champs de mot de passe ne sont pas utilisés
-                            userRef.updateChildren(userMap as Map<String, Any>).addOnSuccessListener {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        "Profil mis à jour avec succès.",
-                                        duration = SnackbarDuration.Short
-                                    )
+                            userRef.updateChildren(userMap as Map<String, Any>)
+                                .addOnSuccessListener {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "Profil mis à jour avec succès.",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                }.addOnFailureListener {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "Erreur lors de la mise à jour du profil.",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
                                 }
-                            }.addOnFailureListener {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        "Erreur lors de la mise à jour du profil.",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
-                            }
                         }
 
                         if (passwordChangeError.isNotEmpty()) {
@@ -607,196 +687,158 @@ fun BottomNavBar(navController: NavHostController) {
     @Composable
     fun FeedEditScreen(navController: NavHostController) {
         val db = FirebaseDatabase.getInstance()
-        Log.d("Firebase", "Database instance created")
+        val posts = remember { mutableStateListOf<Post>() }
 
-        // Obtenez une référence à la collection de posts et limitez les résultats aux 10 premiers
         val postRef = db.getReference("Crushisen/post").limitToFirst(10)
-        Log.d("Firebase", "Post reference created")
-        Log.d("Firebase", "Post reference: $postRef")
 
         postRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                Log.d("Firebase", "Data received: $snapshot")
-                // Vérifiez que le snapshot contient des données
                 if (snapshot.exists()) {
-                    // Parcourez chaque post dans le snapshot
                     snapshot.children.forEach { postSnapshot ->
-                        // Convertissez le post en une Map et récupérez les données
                         val postData = postSnapshot.value as? Map<*, *>
-                        Log.d("Firebase", "Post data: $postData")
                         postData?.let {
                             val ID_user = it["ID_user"].toString()
                             val description = it["description"].toString()
-                            val like = it["like"].toString().toInt()
+                            val like = it["like"]?.toString()?.toIntOrNull() ?: 0
                             val photos = it["photos"] as? List<String> ?: listOf()
 
-                            // Utilisez les données ici
-                            Log.d("Firebase", "ID_user: $ID_user")
-                            Log.d("Firebase", "description: $description")
-                            Log.d("Firebase", "like: $like")
-                            photos.forEachIndexed { index, photoUrl ->
-                                Log.d("Firebase", "photo[$index]: $photoUrl")
-                            }
+                            // Ajoutez chaque post à la liste des posts
+                            posts.add(Post(ID_user, description, like, photos))
                         }
                     }
-                } else {
-                    Log.d("Firebase", "No data available")
                 }
             }
-
 
             override fun onCancelled(databaseError: DatabaseError) {
                 Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
             }
         })
+
+
         CrushIsenTheme {
-    Scaffold(
-        bottomBar = {
-            BottomNavBar(navController = navController)
-        },
-        topBar = {
-            FeedHeader(userName = "Lost")
-        },
-        content = { paddingValues ->
-            Surface(
-                Modifier
-                    .padding(paddingValues)
-                    .padding(horizontal = 8.dp)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFFF58529),
-                                Color(0xFFDD2A7B),
-                                Color(0xFF8134AF),
-                                Color(0xFF515BD4)
-                            )
-                        )
-                    ),
-            ) {
-                LazyColumn {
-                    item {
-                        StyleCard(
-                            imageResList = listOf(
-                                R.drawable.test_card,
-                                R.drawable.test_card2,
-                                R.drawable.test_card3
+            Scaffold(
+                bottomBar = {
+                    BottomNavBar(navController = navController)
+                },
+                topBar = {
+                    FeedHeader(userName = "Lost")
+                },
+                content = { paddingValues ->
+                    Surface(
+                        Modifier
+                            .padding(paddingValues)
+                            .padding(horizontal = 8.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFF58529),
+                                        Color(0xFFDD2A7B),
+                                        Color(0xFF8134AF),
+                                        Color(0xFF515BD4)
+                                    )
+                                )
                             ),
-                            username = "Crushisen" // Nom d'utilisateur à afficher
-                        )
+                    ) {
+                        LazyColumn {
+                            items(posts.size) { index ->
+                                val post = posts[index]
+                                Log.d("FeedEditScreen", "Post: $post")
+                                StyleCard(
+                                    imageUris = post.photos,// Passer la liste des URL d'images
+                                    username = post.ID_user,
+                                    description = post.description
+                                )
+                            }
+                        }
                     }
+                }
+            )
+        }
+    }
 
-                    item {
-                        StyleCard(
-                            imageResList = listOf(
-                                R.drawable.test_card,
-                                R.drawable.test_card2,
-                                R.drawable.test_card3
-                            ),
-                            username = "coucou" // Nom d'utilisateur à afficher
-                        )
-                    }
 
-                    item {
-                        StyleCard(
-                            imageResList = listOf(
-                                R.drawable.test_card,
-                                R.drawable.test_card2,
-                                R.drawable.test_card3
-                            ),
-                            username = "coucou" // Nom d'utilisateur à afficher
+    @OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
+    @Composable
+    fun StyleCard(
+        imageUris: List<String>, // La liste des URLs d'images à afficher
+        username: String, // Nom d'utilisateur à afficher
+        description: String, // Description à afficher
+    ) {
+        var liked by remember { mutableStateOf(false) }
+        var likesCount by remember { mutableStateOf(0) }
+        var showDialog by remember { mutableStateOf(false) }
+
+        Card(
+            elevation = 4.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(id = R.drawable.icon_pp),
+                        contentDescription = "User Icon",
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .padding(8.dp)
+                    )
+                    Text(
+                        text = username,
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+
+                imageUris.forEach { imageUrl ->
+                    Image(
+                        painter = rememberImagePainter(data = imageUrl),
+                        contentDescription = "Post Image",
+                        modifier = Modifier
+                            .height(200.dp) // Set a fixed height or use .fillMaxWidth() for dynamic size
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp)), // Add some rounded corners
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(Modifier.height(8.dp)) // Add space between images if multiple
+                }
+
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.body2,
+                    modifier = Modifier.padding(8.dp)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    IconToggleButton(
+                        checked = liked,
+                        onCheckedChange = {
+                            liked = it
+                            if (it) likesCount++ else if (likesCount > 0) likesCount--
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            contentDescription = "Like",
+                            tint = if (liked) Color.Red else Color.Gray
                         )
                     }
+                    Text(text = "$likesCount likes") // Display the likes count
                 }
             }
         }
-    )
-}
-
-
-
-        @OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
-        @Composable
-        fun StyleCard(
-            imageResList: List<Int>, // Liste des ID de ressources d'images
-            username: String, // Nom d'utilisateur à afficher
-        ) {
-            var liked by remember { mutableStateOf(false) } // État pour gérer si le post est aimé ou non
-            var likesCount by remember { mutableStateOf(0) } // État pour gérer le nombre de likes
-            var showDialog by remember { mutableStateOf(false) } // État pour gérer l'affichage de la Dialog
-
-            Card(
-                elevation = 4.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()) // Utilisez Column avec verticalScroll ici
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(id = R.drawable.icon_pp),
-                            contentDescription = "User Icon",
-                            modifier = Modifier
-                                .size(36.dp) // Increase the size here
-                                .padding(8.dp)
-                        )
-                        Text(
-                            text = username,
-                            style = MaterialTheme.typography.body1,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                }
-            }
-
-            val pagerState = null
-            pagerState?.let {
-                HorizontalPager(state = it, modifier = Modifier
-                    .height(100.dp) // Réduisez la hauteur ici
-                    .clickable { showDialog = true }) { page ->
-                    Image(
-                        painter = painterResource(id = imageResList[page]),
-                        contentDescription = "Post Image",
-                        modifier = Modifier.fillMaxWidth(),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-            }
-                    Spacer(Modifier.height(4.dp))
-                    Image(
-                        painter = painterResource(id = R.drawable.icon_comment),
-                        contentDescription = "Comment Icon",
-                        modifier = Modifier
-                            .size(39.dp) // Set the size to be the same as the heart icon
-                            .padding(8.dp)
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        IconToggleButton(
-                            checked = liked,
-                            onCheckedChange = {
-                                liked = it
-                                if (it) likesCount++ else if (likesCount > 0) likesCount--
-                            }
-                        ) {
-                            Icon(
-                                imageVector = if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = "Like",
-                                tint = if (liked) Color.Red else Color.Gray
-                            )
-                        }
-                        Text(text = "$likesCount") // Texte qui affiche le nombre de likes
-                        // Ajoutez plus d'éléments ici si nécessaire
-                    }
-                }
     }
 }
+
+
+
 /*
 if (showDialog) {
     Dialog(onDismissRequest = { showDialog = false }) {
