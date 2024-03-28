@@ -27,11 +27,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +50,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -288,7 +291,12 @@ fun CreateAccountPage(navController: NavController) {
                             )
                         },
                         modifier
-                        = Modifier.fillMaxWidth()
+                        = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
 
                     )
                 }
@@ -305,7 +313,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -321,7 +334,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -338,6 +356,11 @@ fun CreateAccountPage(navController: NavController) {
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                     )
@@ -356,6 +379,11 @@ fun CreateAccountPage(navController: NavController) {
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                     )
@@ -373,7 +401,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -393,7 +426,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
 
@@ -410,7 +448,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -426,7 +469,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -442,7 +490,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -458,7 +511,12 @@ fun CreateAccountPage(navController: NavController) {
                                 color = Color.White
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -468,6 +526,7 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedButton(
                         onClick = { launcher.launch("image/*") },
                         modifier = Modifier.fillMaxWidth()
+
                     ) {
                         Text(
                             text = "Télécharger une photo",
