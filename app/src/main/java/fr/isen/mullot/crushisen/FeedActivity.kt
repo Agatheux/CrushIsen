@@ -932,7 +932,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
         val db = FirebaseDatabase.getInstance()
         val posts = remember { mutableStateListOf<Post>() }
 
-        val postRef = db.getReference("Crushisen/post").limitToFirst(10)
+        val postRef = db.getReference("Crushisen/post").limitToLast(30)
         postRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
