@@ -14,7 +14,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,12 +27,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
 import androidx.compose.material.IconToggleButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.NavigationRailItem
@@ -41,9 +45,9 @@ import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
+import androidx.compose.material.TextButton
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.runtime.Composable
@@ -57,16 +61,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -74,6 +83,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -82,7 +92,9 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.ktx.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import kotlinx.coroutines.launch
 
@@ -91,11 +103,9 @@ data class Post(
     val ID_user: String,
     val description: String,
     val likes: Int,
-    val photos: List<String>
+    val photos: List<String>,
+    val photoUrl: String // URL de la photo de profil de l'utilisateur
 )
-
-
-
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -120,8 +130,8 @@ fun HomePage(onNavigate: () -> Unit) {
 
 // Fonction modifiée pour créer un post avec téléchargement d'images
 fun createPost(context: Context, userId: String, description: String, imageUris: List<Uri>) {
-    // Génère un ID unique pour le post
-    val postId = FirebaseDatabase.getInstance().getReference("Jerem").child("post").push().key ?: return
+    // Génère un ID unique pour le post basé sur le timestamp actuel
+    val postId = System.currentTimeMillis().toString()
 
     // Chemin vers le stockage des images
     val storageRef = FirebaseStorage.getInstance().reference.child("postImages/$postId")
@@ -157,8 +167,8 @@ fun createPost(context: Context, userId: String, description: String, imageUris:
                     Log.d("CreatePost", "Post apres les images download: $post")
 
                     // Ajoute le post à Firebase Realtime Database
-                    FirebaseDatabase.getInstance().getReference("Jerem")
-                        .child("post")
+                    FirebaseDatabase.getInstance().getReference("Crushisen")
+                        .child("posts")
                         .child(postId)
                         .setValue(post)
                         .addOnSuccessListener {
@@ -186,76 +196,103 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
         uri?.let { imageUris = imageUris + it }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Create Post") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        content = { padding ->
-            Column(modifier = Modifier.run {
-                padding(padding)
-                    .padding(16.dp)
-            }) {
-                OutlinedTextField(
-                    value = description.value,
-                    onValueChange = { description.value = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { launcher.launch("image/*") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Choose Image")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-              Button(
-    onClick = { imageUris = emptyList() }, // Set imageUris to a new empty list
-    modifier = Modifier.fillMaxWidth()
-) {
-    Text("Remove Images")
-}
-                Spacer(modifier = Modifier.height(16.dp))
-                imageUris.forEach { uri -> // Display each selected image
-                    Image(
-                        painter = rememberImagePainter(data = uri),
-                        contentDescription = "Selected Image",
-                        modifier = Modifier
-                            .height(200.dp)
-                            .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.medium),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+    val gradientBackground = Brush.verticalGradient(
+        colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
+        startY = 0f,
+        endY = 700f
+    )
 
-                Button(
-                    onClick = {
-                        val userId = auth.currentUser?.uid ?: ""
-                        if (imageUris.isNotEmpty()) {
-                            createPost(context, userId, description.value, imageUris.map { it }) // Pass the list of URIs as strings
-                            Toast.makeText(context, "Post created successfully", Toast.LENGTH_SHORT).show()
-                            onBack() // Navigate back after posting
-                            onBack() // Navigate back after posting
-                        } else {
-                            Toast.makeText(context, "Please select an image", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
+    Scaffold(
+
+        content = { padding ->
+            Box(
+                modifier = Modifier
+                    .background(brush = gradientBackground)
+                    .fillMaxSize()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(padding)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Post")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = "Créer un post",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        textAlign = TextAlign.Center)
+                    OutlinedTextField(
+                        value = description.value,
+                        onValueChange = { description.value = it },
+                        label = { Text("Description", color = Color.White) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { launcher.launch("image/*") },
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+
+                    ) {
+                        Text("Choisir une/des images", color = Color(0xffd08ae0), )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { imageUris = emptyList() }, // Set imageUris to a new empty list
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+
+                    ) {
+                        Text("Retirer les images", color = Color(0xffd08ae0))
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    imageUris.forEach { uri -> // Display each selected image
+                        Image(
+                            painter = rememberImagePainter(data = uri),
+                            contentDescription = "Selected Image",
+                            modifier = Modifier
+                                .height(200.dp)
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            val userId = auth.currentUser?.uid ?: ""
+                            if (imageUris.isNotEmpty()) {
+                                createPost(context, userId, description.value, imageUris.map { it }) // Pass the list of URIs as strings
+                                Toast.makeText(context, "Votre post est en ligne", Toast.LENGTH_SHORT).show()
+                                onBack() // Navigate back after posting
+                            } else {
+                                Toast.makeText(context, "Veuillez selectionner une image", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+
+                    ) {
+                        Text("Poster", color = Color(0xffd08ae0))
+                    }
                 }
             }
         }
     )
 }
+
 
 class FeedActivity : ComponentActivity() {
 
@@ -291,13 +328,6 @@ class FeedActivity : ComponentActivity() {
             }
             composable("profile") {
                 ProfileEditScreen(navController)
-
-            }
-            composable("notification") {
-                NotificationEditScreen(navController)
-            }
-            composable("homePage") {
-                HomePage(onNavigate = { navController.navigate("createPost") })
             }
             composable("createPost") {
                 CreatePostPage(context = context, onBack = { navController.popBackStack() })
@@ -326,42 +356,30 @@ class FeedActivity : ComponentActivity() {
 
     @Composable
     fun BottomNavBar(navController: NavHostController) {
-        // State to track the selected item in the BottomNavBar
         val selectedItem = remember { mutableStateOf("Feed") }
 
-        // Navigation listener to change the selected item based on the current destination
         navController.addOnDestinationChangedListener { _, destination, _ ->
             selectedItem.value = when (destination.route) {
                 "feed" -> "Feed"
                 "profile" -> "Profile"
-                "notification" -> "Notification"
-                "homePage" -> "HomePage" // Change this line
-                else -> "Feed" // Set a default value
+                "createPost" -> "CreatePost"
+                else -> "Feed"
             }
         }
 
-        // Navigation to the "Feed" destination when the "Feed" item is selected
         fun navigateToFeed() {
             selectedItem.value = "Feed"
             navController.navigate("feed")
         }
 
-        // Navigation to the "Profile" destination when the "Profile" item is selected
         fun navigateToProfile() {
             selectedItem.value = "Profile"
             navController.navigate("profile")
         }
 
-        // Navigation to the "Notification" destination when the "Notification" item is selected
-        fun navigateToNotification() {
-            selectedItem.value = "Notification"
-            navController.navigate("notification")
-        }
-
-        // Navigation to the "HomePage" destination when the "HomePage" item is selected
-        fun navigateToHomePage() { // Change this function
-            selectedItem.value = "HomePage"
-            navController.navigate("homePage") // Change this line
+        fun navigateToCreatePost() {
+            selectedItem.value = "CreatePost"
+            navController.navigate("createPost")
         }
 
         Surface(
@@ -373,65 +391,54 @@ class FeedActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Navigation item for "Feed"
                 NavigationRailItem(
                     selected = selectedItem.value == "Feed",
                     onClick = { navigateToFeed() },
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_home),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
+                    icon = { Icon(painterResource(id = R.drawable.icon_home), contentDescription = null, Modifier.size(24.dp)) },
                 )
 
-                // Navigation item for "Notification"
                 NavigationRailItem(
-                    selected = selectedItem.value == "Notification",
-                    onClick = { navigateToNotification() },
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_alert),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
+                    selected = selectedItem.value == "CreatePost",
+                    onClick = { navigateToCreatePost() },
+                    icon = { Icon(painterResource(id = R.drawable.icon_post), contentDescription = null, Modifier.size(24.dp)) },
                 )
 
-                // Navigation item for "Profile"
                 NavigationRailItem(
                     selected = selectedItem.value == "Profile",
                     onClick = { navigateToProfile() },
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_settings),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
-                )
-
-                // Navigation item for "HomePage"
-                NavigationRailItem(
-                    selected = selectedItem.value == "HomePage", // Change this line
-                    onClick = { navigateToHomePage() }, // Change this line
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_post),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
+                    icon = { Icon(painterResource(id = R.drawable.icon_settings), contentDescription = null, Modifier.size(24.dp)) },
                 )
             }
         }
     }
 
-
     @Composable
-    fun FeedHeader(userName: String) {
-        val imagePainter = painterResource(id = R.drawable.icon_pp)
+    fun FeedHeader() {
+        val auth = FirebaseAuth.getInstance()
+        val db = FirebaseDatabase.getInstance()
+        val userId = auth.currentUser?.uid ?: ""
+        val userRef = db.getReference("Crushisen/user").child(userId)
+
+        var username by remember { mutableStateOf("") }
+        var photoprofil by remember { mutableStateOf("") }
+
+        LaunchedEffect(userId) {
+            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    username = snapshot.child("pseudo").getValue(String::class.java) ?: ""
+                    photoprofil = snapshot.child("photoUrl").getValue(String::class.java) ?: ""
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    // Handle error
+                }
+            })
+        }
+
+        val imagePainter = rememberImagePainter(data = photoprofil, builder = {
+            crossfade(true)
+        })
+
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -443,7 +450,7 @@ class FeedActivity : ComponentActivity() {
                     .padding(start = 16.dp) // Add padding to the start
             )
             Text(
-                text = userName,
+                text = username,
                 modifier = Modifier.padding(start = 16.dp),
                 fontSize = 20.sp, // Increase
                 fontWeight = FontWeight.Bold// the font size here
@@ -491,7 +498,7 @@ class FeedActivity : ComponentActivity() {
         val auth = FirebaseAuth.getInstance()
         val db = FirebaseDatabase.getInstance()
         val userId = auth.currentUser?.uid ?: ""
-        val userRef = db.getReference("Jerem/user").child(userId)
+        val userRef = db.getReference("Crushisen/user").child(userId)
 
         var oldPassword by remember { mutableStateOf("") }
         var newPassword by remember { mutableStateOf("") }
@@ -502,191 +509,427 @@ class FeedActivity : ComponentActivity() {
         var description by remember { mutableStateOf("") }
         var phone by remember { mutableStateOf("") }
         var annee_a_lisen by remember { mutableStateOf("") }
+        var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+        val showDialog = remember { mutableStateOf(false) }
 
-        LaunchedEffect(key1 = userId) {
-            if (userId.isNotEmpty()) {
-                userRef.addValueEventListener(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        val userData = snapshot.value as? Map<*, *>
-                        userData?.let {
-                            pseudo = it["pseudo"].toString()
-                            email = it["email"].toString()
-                            description = it["description"].toString()
-                            phone = it["numero"].toString()
-                            annee_a_lisen = it["annee_a_lisen"].toString()
-                        }
+        val launcher =
+            rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+                selectedImageUri = uri
+            }
+        // Récupération des données utilisateur pour les champs auto-remplis
+        LaunchedEffect(userId) {
+            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val userData = snapshot.getValue(User::class.java)
+                    userData?.let {
+                        pseudo = it.pseudo
+                        email = it.email
+                        description = it.description
+                        phone = it.numero
+                        annee_a_lisen = it.annee_a_lisen
                     }
+                }
 
-                    override fun onCancelled(error: DatabaseError) {
-                        Log.e("ProfileEditScreen", "Failed to load user data: $error")
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "Failed to load user data.",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
-                    }
-                })
+                override fun onCancelled(error: DatabaseError) {
+                    // Gérer les erreurs de récupération des données
+                }
+            })
+        }
+
+
+        LaunchedEffect(selectedImageUri) {
+            selectedImageUri?.let { uri ->
+                // Si une nouvelle image a été sélectionnée, téléchargez-la et mettez à jour l'URL dans la base de données
+                uploadNewProfileImage(uri)
             }
         }
 
+        val gradientBackground = Brush.linearGradient(
+            colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
+            start = Offset(0f, 0f),
+            end = Offset(1000f, 1000f)
+        )
+
         Scaffold(
-            topBar = {
-                TopAppBar(title = { Text("Edit Profile") })
-            },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             bottomBar = {
                 BottomNavBar(navController = navController)
             }
         ) { paddingValues ->
-            Column(
+            Box(
                 modifier = Modifier
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .background(brush = gradientBackground)
+                    .fillMaxSize()
             ) {
-                // TextFields pour pseudo, email, etc...
-                OutlinedTextField(
-                    value = pseudo,
-                    onValueChange = { pseudo = it },
-                    label = { Text("Pseudo") })
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") })
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") })
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("Phone") })
-                OutlinedTextField(
-                    value = annee_a_lisen,
-                    onValueChange = { annee_a_lisen = it },
-                    label = { Text("Année a l'ISEN") })
-                OutlinedTextField(
-                    value = oldPassword,
-                    onValueChange = { oldPassword = it },
-                    label = { Text("Ancien mot de passe") },
-                    visualTransformation = PasswordVisualTransformation()
-                )
-                OutlinedTextField(
-                    value = newPassword,
-                    onValueChange = { newPassword = it },
-                    label = { Text("Nouveau mot de passe") },
-                    visualTransformation = PasswordVisualTransformation()
-                )
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = { Text("Confirmer le nouveau mot de passe") },
-                    visualTransformation = PasswordVisualTransformation()
-                )
-
-                if (passwordChangeError.isNotEmpty()) {
-                    Text(passwordChangeError, color = Color.Red)
-                }
-
-
-                Button(
-                    onClick = {
-// Mise à jour des informations de l'utilisateur
-                        val userMap = hashMapOf(
-                            "pseudo" to pseudo,
-                            "email" to email,
-                            "description" to description,
-                            "numero" to phone,
-                            "annee_a_lisen" to annee_a_lisen
+                LazyColumn(
+                    modifier = Modifier
+                        .padding(paddingValues)
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = "Modifier votre profil",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = pseudo,
+                            onValueChange = { pseudo = it },
+                            label = { Text(text = "Pseudo", color = Color.White) },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        val currentUser = auth.currentUser
-                        val userEmail = currentUser?.email ?: ""
-                        // Vérification si les champs de mot de passe sont remplis et correspondent
-                        if (oldPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
-                            if (newPassword == confirmPassword) {
-                                // Étape 1 : Re-authentification de l'utilisateur
-                                val credential =
-                                    EmailAuthProvider.getCredential(userEmail, oldPassword)
-                                currentUser?.reauthenticate(credential)
-                                    ?.addOnCompleteListener { reauthTask ->
-                                        if (reauthTask.isSuccessful) {
-                                            // Étape 2 : Mise à jour du mot de passe
-                                            currentUser.updatePassword(newPassword)
-                                                .addOnCompleteListener { updateTask ->
-                                                    if (updateTask.isSuccessful) {
-                                                        // Réinitialisation des champs de mot de passe après mise à jour
-                                                        oldPassword = ""
-                                                        newPassword = ""
-                                                        confirmPassword = ""
 
-                                                        // Mise à jour des autres informations de l'utilisateur
-                                                        userRef.updateChildren(userMap as Map<String, Any>)
-                                                            .addOnSuccessListener {
-                                                                scope.launch {
-                                                                    snackbarHostState.showSnackbar(
-                                                                        "Profil et mot de passe mis à jour avec succès.",
-                                                                        duration = SnackbarDuration.Short
-                                                                    )
-                                                                }
-                                                            }.addOnFailureListener {
-                                                                scope.launch {
-                                                                    snackbarHostState.showSnackbar(
-                                                                        "Erreur lors de la mise à jour des informations du profil.",
-                                                                        duration = SnackbarDuration.Short
-                                                                    )
-                                                                }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text(text = "Email", color = Color.White) },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = description,
+                            onValueChange = { description = it },
+                            label = { Text(text = "Description", color = Color.White) },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = phone,
+                            onValueChange = { phone = it },
+                            label = { Text(text = "Phone", color = Color.White) },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = annee_a_lisen,
+                            onValueChange = { annee_a_lisen = it },
+                            label = { Text(text = "Année a l'ISEN", color = Color.White) },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = oldPassword,
+                            onValueChange = { oldPassword = it },
+                            label = { Text(text = "Ancien mot de passe", color = Color.White) },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = newPassword,
+                            onValueChange = { newPassword = it },
+                            label = { Text(text = "Nouveau mot de passe", color = Color.White) },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            label = {
+                                Text(
+                                    text = "Confirmer le nouveau mot de passe",
+                                    color = Color.White
+                                )
+                            },
+                            textStyle = TextStyle(color = Color.White),
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                                focusedBorderColor = Color.White
+                            ),
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Bouton pour mettre à jour le profil
+                        Button(
+                            onClick = {
+                                // Mise à jour des informations de l'utilisateur
+                                val userMap = hashMapOf(
+                                    "pseudo" to pseudo,
+                                    "email" to email,
+                                    "description" to description,
+                                    "numero" to phone,
+                                    "annee_a_lisen" to annee_a_lisen
+                                )
+                                val currentUser = auth.currentUser
+                                val userEmail = currentUser?.email ?: ""
+                                // Vérification si les champs de mot de passe sont remplis et correspondent
+                                if (oldPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
+                                    if (newPassword == confirmPassword) {
+                                        // Étape 1 : Re-authentification de l'utilisateur
+                                        val credential =
+                                            EmailAuthProvider.getCredential(userEmail, oldPassword)
+                                        currentUser?.reauthenticate(credential)
+                                            ?.addOnCompleteListener { reauthTask ->
+                                                if (reauthTask.isSuccessful) {
+                                                    // Étape 2 : Mise à jour du mot de passe
+                                                    currentUser.updatePassword(newPassword)
+                                                        .addOnCompleteListener { updateTask ->
+                                                            if (updateTask.isSuccessful) {
+                                                                // Réinitialisation des champs de mot de passe après mise à jour
+                                                                oldPassword = ""
+                                                                newPassword = ""
+                                                                confirmPassword = ""
+
+                                                                // Mise à jour des autres informations de l'utilisateur
+                                                                userRef.updateChildren(userMap as Map<String, Any>)
+                                                                    .addOnSuccessListener {
+                                                                        scope.launch {
+                                                                            snackbarHostState.showSnackbar(
+                                                                                "Profil et mot de passe mis à jour avec succès.",
+                                                                                duration = SnackbarDuration.Short
+                                                                            )
+                                                                        }
+                                                                    }.addOnFailureListener {
+                                                                        scope.launch {
+                                                                            snackbarHostState.showSnackbar(
+                                                                                "Erreur lors de la mise à jour des informations du profil.",
+                                                                                duration = SnackbarDuration.Short
+                                                                            )
+                                                                        }
+                                                                    }
+                                                            } else {
+                                                                passwordChangeError =
+                                                                    "Erreur lors de la mise à jour du mot de passe."
                                                             }
-                                                    } else {
-                                                        passwordChangeError =
-                                                            "Erreur lors de la mise à jour du mot de passe."
-                                                    }
+                                                        }
+                                                } else {
+                                                    passwordChangeError =
+                                                        "L'ancien mot de passe est incorrect."
                                                 }
-                                        } else {
-                                            passwordChangeError =
-                                                "L'ancien mot de passe est incorrect."
+                                            }
+                                    } else {
+                                        passwordChangeError =
+                                            "Les nouveaux mots de passe ne correspondent pas."
+                                    }
+                                } else {
+                                    // Mise à jour uniquement des autres informations si les champs de mot de passe ne sont pas utilisés
+                                    userRef.updateChildren(userMap as Map<String, Any>)
+                                        .addOnSuccessListener {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    "Profil mis à jour avec succès.",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                        }.addOnFailureListener {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    "Erreur lors de la mise à jour du profil.",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
                                         }
-                                    }
-                            } else {
-                                passwordChangeError =
-                                    "Les nouveaux mots de passe ne correspondent pas."
-                            }
-                        } else {
-                            // Mise à jour uniquement des autres informations si les champs de mot de passe ne sont pas utilisés
-                            userRef.updateChildren(userMap as Map<String, Any>)
-                                .addOnSuccessListener {
+                                }
+
+                                if (passwordChangeError.isNotEmpty()) {
                                     scope.launch {
                                         snackbarHostState.showSnackbar(
-                                            "Profil mis à jour avec succès.",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                }.addOnFailureListener {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            "Erreur lors de la mise à jour du profil.",
+                                            passwordChangeError,
                                             duration = SnackbarDuration.Short
                                         )
                                     }
                                 }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text(
+                                text = "Mettre à jour",
+                                style = TextStyle(
+                                    color = Color(0xffd08ae0),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                )
+                            )
                         }
 
-                        if (passwordChangeError.isNotEmpty()) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    passwordChangeError,
-                                    duration = SnackbarDuration.Short
+                        // Bouton pour sélectionner une nouvelle photo de profil
+                        Button(
+                            onClick = { launcher.launch("image/*") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text(
+                                text = "Changer de photo de profil",
+                                style = TextStyle(
+                                    color = Color(0xffd08ae0),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
                                 )
-                            }
+                            )
+                        }
+                        // Bouton de déconnexion
+                        Button(
+                            onClick = {
+                                auth.signOut()
+                                navController.navigate("MainActivity") {
+                                    popUpTo("ProfileEditScreen") { inclusive = true }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text(
+                                text = "Déconnexion",
+                                style = TextStyle(
+                                    color = Color(0xffd08ae0),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                )
+                            )
+                        }
+
+                        // Ajoutez un bouton pour supprimer le compte
+                        Button(
+                            onClick = { showDialog.value = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text(
+                                text = "Supprimer le compte",
+                                style = TextStyle(
+                                    color = Color(0xffd08ae0),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                )
+                            )
+                        }
+
+// Affichez un dialogue de confirmation pour la suppression du compte
+                        if (showDialog.value) {
+                            AlertDialog(
+                                onDismissRequest = { showDialog.value = false },
+                                title = { Text(text = "Confirmation") },
+                                text = { Text(text = "Êtes-vous sûr de vouloir supprimer votre compte ?") },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            // Supprimez le compte de la base de données et de l'authentificateur
+                                            userRef.removeValue().addOnCompleteListener { task ->
+                                                if (task.isSuccessful) {
+                                                    auth.currentUser?.delete()?.addOnCompleteListener { deleteTask ->
+                                                        if (deleteTask.isSuccessful) {
+                                                            // Redirigez l'utilisateur vers MainActivity ou une autre destination
+                                                            navController.navigate("MainActivity") {
+                                                                popUpTo("ProfileEditScreen") { inclusive = true }
+                                                            }
+                                                        } else {
+                                                            // Gérez l'échec de la suppression du compte de l'authentificateur
+                                                        }
+                                                    }
+                                                } else {
+                                                    // Gérez l'échec de la suppression du compte de la base de données
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Text(text = "Confirmer")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        onClick = { showDialog.value = false }
+                                    ) {
+                                        Text(text = "Annuler")
+                                    }
+                                }
+                            )
                         }
                     }
-                ) {
-                    Text("Mettre à jour")
                 }
             }
-
         }
     }
+
+    // Fonction pour télécharger la nouvelle image dans Firebase Storage et mettre à jour l'URL dans la base de données
+    fun uploadNewProfileImage(imageUri: Uri) {
+        val auth = FirebaseAuth.getInstance()
+        val db = FirebaseDatabase.getInstance()
+        val userId = auth.currentUser?.uid ?: ""
+        val userRef = db.getReference("Crushisen/user").child(userId)
+
+        val storageRef = Firebase.storage.reference
+        val imagesRef = storageRef.child("images_profile/${auth.currentUser?.uid}")
+
+        imagesRef.putFile(imageUri)
+            .addOnSuccessListener { taskSnapshot ->
+                // Téléchargement réussi, récupérez l'URL de téléchargement
+                imagesRef.downloadUrl.addOnSuccessListener { uri ->
+                    // Mise à jour de l'URL de l'image dans la base de données en temps réel
+                    userRef.child("photoUrl").setValue(uri.toString())
+                        .addOnSuccessListener {
+                            // Mise à jour réussie
+                        }
+                        .addOnFailureListener { exception ->
+                            // Gestion des erreurs lors de la mise à jour de l'URL dans la base de données
+                        }
+                }
+            }
+            .addOnFailureListener { exception ->
+                // Gestion des erreurs lors du téléchargement de la nouvelle image dans Firebase Storage
+            }
+    }
+
+
 
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -694,43 +937,66 @@ class FeedActivity : ComponentActivity() {
     fun FeedEditScreen(navController: NavHostController) {
         val db = FirebaseDatabase.getInstance()
         val posts = remember { mutableStateListOf<Post>() }
+        var isRefreshing by remember { mutableStateOf(false) }
 
-        val postRef = db.getReference("Jerem/post").limitToFirst(10)
+        val postRef = db.getReference("Crushisen/posts").limitToLast(20)
 
-        postRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    posts.clear() // Effacez la liste avant d'ajouter de nouveaux éléments
-                    snapshot.children.forEach { postSnapshot ->
-                        val ID_user =
-                            postSnapshot.child("ID_user").getValue(String::class.java) ?: ""
-                        val description =
-                            postSnapshot.child("description").getValue(String::class.java) ?: ""
-                        val likes = postSnapshot.child("like").getValue(Int::class.java) ?: 0
-                        val photos = postSnapshot.child("photos")
-                            .getValue(object : GenericTypeIndicator<List<String>>() {}) ?: listOf()
+        fun refreshPosts() {
+            isRefreshing = true
+            posts.clear()
+            postRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        posts.clear()
 
-                        // Ajoutez chaque post à la liste des posts, n'oubliez pas d'ajouter l'ID du post
-                        posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos))
+                        snapshot.children.forEach { postSnapshot ->
+                            val ID_user = postSnapshot.child("ID_user").getValue(String::class.java) ?: ""
+                            val description = postSnapshot.child("description").getValue(String::class.java) ?: ""
+                            val likes = postSnapshot.child("like").getValue(Int::class.java) ?: 0
+                            val photos = postSnapshot.child("photos").getValue(object : GenericTypeIndicator<List<String>>() {}) ?: listOf()
+
+                            val userRef = db.getReference("Crushisen/user").child(ID_user)
+                            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(userSnapshot: DataSnapshot) {
+                                    val photoUrl = userSnapshot.child("photoUrl").getValue(String::class.java) ?: ""
+                                    posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos, photoUrl))
+
+                                }
+
+                                override fun onCancelled(databaseError: DatabaseError) {
+                                    Log.e("Firebase", "Error fetching user photo URL: ${databaseError.message}")
+                                }
+                            })
+                        }
                     }
+                    isRefreshing = false
                 }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
+                    isRefreshing = false
+                }
+            })
+            //dans la liste de post, si il y a plusieurs fois le meme id, on en garde qu'un
+
+        }
+        posts.sortBy { it.id }
+        posts.reverse()
+        //si posts contient 2 fois le meme post, on le supprime
+        for (i in 0 until posts.size - 1) {
+            if (posts[i].id == posts[i + 1].id) {
+                posts.removeAt(i)
             }
+        }
 
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
-            }
-        })
-
+        // Appel initial pour charger les posts
+        LaunchedEffect(Unit) { refreshPosts() }
 
         CrushIsenTheme {
             Scaffold(
-                bottomBar = {
-                    BottomNavBar(navController = navController)
-                },
-                topBar = {
-                    FeedHeader(userName = "Lost")
-                },
+                bottomBar = { BottomNavBar(navController = navController) },
+                topBar = { FeedHeader() },
                 content = { paddingValues ->
                     Surface(
                         Modifier
@@ -747,26 +1013,33 @@ class FeedActivity : ComponentActivity() {
                                 )
                             ),
                     ) {
-                        LazyColumn {
-                            items(posts) { post -> // Utilisez directement 'post' ici
-                                Log.d("FeedEditScreen", "Post: $post")
-                                StyleCard(
-                                    postId = post.id, // Assurez-vous d'avoir un 'id' dans votre objet 'Post'
-                                    userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
-                                    imageUris = post.photos,
-                                    username = post.ID_user,
-                                    description = post.description,
-                                    initialLikesCount = post.likes,
-                                    isInitiallyLiked = false // Modifiez cela selon la logique appropriée pour vérifier si l'utilisateur actuel a déjà aimé le post
-                                )
+                        com.google.accompanist.swiperefresh.SwipeRefresh(
+                            state = rememberSwipeRefreshState(isRefreshing = isRefreshing),
+                            onRefresh = { refreshPosts() },
+                        ) {
+                            LazyColumn {
+                                items(posts) { post ->
+                                    Log.d("FeedEditScreen", "Post: $post")
+                                    StyleCard(
+                                        postId = post.id,
+                                        userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                                        imageUris = post.photos,
+                                        username = post.ID_user,
+                                        description = post.description,
+                                        initialLikesCount = post.likes,
+                                        isInitiallyLiked = false,
+                                        userProfileImageUrl = post.photoUrl
+                                    )
+                                }
+
                             }
                         }
-
                     }
                 }
             )
         }
     }
+
 
 
     @OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
@@ -778,7 +1051,9 @@ class FeedActivity : ComponentActivity() {
         username: String,
         description: String,
         initialLikesCount: Int, // Ajoutez le nombre initial de likes
-        isInitiallyLiked: Boolean // Ajoutez si le post est initialement aimé par l'utilisateur
+        isInitiallyLiked: Boolean,
+        userProfileImageUrl: String // Ajoutez l'URL de la photo de profil de l'utilisateur ici
+
     ) {
         val dbRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/likes")
         var liked by remember { mutableStateOf(isInitiallyLiked) }
@@ -797,6 +1072,7 @@ class FeedActivity : ComponentActivity() {
                 }
             })
         }
+        val pagerState = rememberPagerState(pageCount = { imageUris.size })
 
         Card(
             elevation = 4.dp,
@@ -807,32 +1083,40 @@ class FeedActivity : ComponentActivity() {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
-                        painter = painterResource(id = R.drawable.icon_pp),
+                        painter = rememberImagePainter(data = userProfileImageUrl),
                         contentDescription = "User Icon",
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
+                            .size(36.dp) // Increase the size here
                             .padding(8.dp)
                     )
                     Text(
                         text = username,
-                        style = MaterialTheme.typography.body1,
+                        style = MaterialTheme.typography.h6,
                         modifier = Modifier.padding(8.dp)
                     )
                 }
 
-                imageUris.forEach { imageUrl ->
+                var imageHeight by remember { mutableStateOf(200.dp) } // Default height
+
+                val pagerState = rememberPagerState(pageCount = { imageUris.size })
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .height(imageHeight.coerceAtMost(500.dp)) // Limit the maximum height
+                        .clickable { showDialog = true }) { page ->
                     Image(
-                        painter = rememberImagePainter(data = imageUrl),
+                        painter = rememberImagePainter(data = imageUris[page]),
                         contentDescription = "Post Image",
                         modifier = Modifier
-                            .height(200.dp) // Set a fixed height or use .fillMaxWidth() for dynamic size
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp)), // Add some rounded corners
+                            .clip(RoundedCornerShape(8.dp))
+                            .onSizeChanged { size ->
+                                imageHeight = size.height.dp.coerceAtMost(500.dp) // Limit the maximum height
+                            },
                         contentScale = ContentScale.Crop
                     )
-                    Spacer(Modifier.height(8.dp)) // Add space between images if multiple
                 }
+
 
                 Text(
                     text = description,
@@ -869,28 +1153,24 @@ class FeedActivity : ComponentActivity() {
                 }
             }
         }
-    }
-}
-
-
-/*
-if (showDialog) {
-    Dialog(onDismissRequest = { showDialog = false }) {
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .clickable { showDialog = false }) {
-            val pagerState = rememberPagerState(pageCount = { imageResList.size })
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                Image(
-                    painter = painterResource(id = imageResList[page]),
-                    contentDescription = "Post Image",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
+        if (showDialog) {
+            Dialog(onDismissRequest = { showDialog = false }) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { showDialog = false }) {
+                    val pagerState = rememberPagerState(pageCount = { imageUris.size })
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                        Image(
+                            painter = rememberImagePainter(data = imageUris[page]),
+                            contentDescription = "Post Image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
             }
         }
     }
 }
-}
-
- */
