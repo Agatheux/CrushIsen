@@ -14,6 +14,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -67,6 +69,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -74,6 +77,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -985,6 +989,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
                 }
             })
         }
+        val pagerState = rememberPagerState(pageCount = { imageUris.size })
 
         Card(
             elevation = 4.dp,
@@ -994,14 +999,6 @@ fun uploadNewProfileImage(imageUri: Uri) {
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.icon_pp),
-                        contentDescription = "User Icon",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .padding(8.dp)
-                    )
                     Text(
                         text = username,
                         style = MaterialTheme.typography.body1,
@@ -1009,18 +1006,27 @@ fun uploadNewProfileImage(imageUri: Uri) {
                     )
                 }
 
-                imageUris.forEach { imageUrl ->
-                    Image(
-                        painter = rememberImagePainter(data = imageUrl),
-                        contentDescription = "Post Image",
-                        modifier = Modifier
-                            .height(200.dp) // Set a fixed height or use .fillMaxWidth() for dynamic size
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp)), // Add some rounded corners
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(Modifier.height(8.dp)) // Add space between images if multiple
-                }
+                var imageHeight by remember { mutableStateOf(200.dp) } // Default height
+
+val pagerState = rememberPagerState(pageCount = { imageUris.size })
+HorizontalPager(
+    state = pagerState,
+    modifier = Modifier
+        .height(imageHeight.coerceAtMost(500.dp)) // Limit the maximum height
+        .clickable { showDialog = true }) { page ->
+    Image(
+        painter = rememberImagePainter(data = imageUris[page]),
+        contentDescription = "Post Image",
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .onSizeChanged { size ->
+                imageHeight = size.height.dp.coerceAtMost(500.dp) // Limit the maximum height
+            },
+        contentScale = ContentScale.Crop
+    )
+}
+
 
                 Text(
                     text = description,
@@ -1054,6 +1060,25 @@ fun uploadNewProfileImage(imageUri: Uri) {
                         )
                     }
                     Text(text = "$likesCount likes")
+                }
+            }
+        }
+        if (showDialog) {
+            Dialog(onDismissRequest = { showDialog = false }) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { showDialog = false }) {
+                    val pagerState = rememberPagerState(pageCount = { imageUris.size })
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                        Image(
+                            painter = rememberImagePainter(data = imageUris[page]),
+                            contentDescription = "Post Image",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
         }
