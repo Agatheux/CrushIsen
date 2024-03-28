@@ -102,7 +102,8 @@ data class Post(
     val ID_user: String,
     val description: String,
     val likes: Int,
-    val photos: List<String>
+    val photos: List<String>,
+    val photoUrl: String // URL de la photo de profil de l'utilisateur
 )
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
@@ -928,12 +929,10 @@ fun uploadNewProfileImage(imageUri: Uri) {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @Composable
     fun FeedEditScreen(navController: NavHostController) {
-        val auth = FirebaseAuth.getInstance()
         val db = FirebaseDatabase.getInstance()
         val posts = remember { mutableStateListOf<Post>() }
 
         val postRef = db.getReference("Crushisen/post").limitToFirst(10)
-
         postRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
@@ -947,20 +946,28 @@ fun uploadNewProfileImage(imageUri: Uri) {
                         val photos = postSnapshot.child("photos")
                             .getValue(object : GenericTypeIndicator<List<String>>() {}) ?: listOf()
 
+                        // Ajoutez une requête supplémentaire pour obtenir l'URL de la photo de profil de l'utilisateur
+                        val userRef = db.getReference("Crushisen/user").child(ID_user)
+                        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(userSnapshot: DataSnapshot) {
+                                val photoUrl = userSnapshot.child("photoUrl").getValue(String::class.java) ?: ""
+                                // Ajoutez chaque post à la liste des posts, n'oubliez pas d'ajouter l'ID du post
+                                posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos, photoUrl))
+                            }
 
-
-
-                        // Ajoutez chaque post à la liste des posts, n'oubliez pas d'ajouter l'ID du post
-                        posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos))
+                            override fun onCancelled(databaseError: DatabaseError) {
+                                Log.e("Firebase", "Error fetching user photo URL: ${databaseError.message}")
+                            }
+                        })
                     }
                 }
             }
-
 
             override fun onCancelled(databaseError: DatabaseError) {
                 Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
             }
         })
+
 
         CrushIsenTheme {
             Scaffold(
@@ -996,7 +1003,8 @@ fun uploadNewProfileImage(imageUri: Uri) {
                                     username = post.ID_user,
                                     description = post.description,
                                     initialLikesCount = post.likes,
-                                    isInitiallyLiked = false
+                                    isInitiallyLiked = false,
+                                    userProfileImageUrl = post.photoUrl // Passez l'URL de la photo de profil ici
 
                                 )
                             }
@@ -1009,6 +1017,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
     }
 
 
+
     @OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
     @Composable
     fun StyleCard(
@@ -1018,7 +1027,9 @@ fun uploadNewProfileImage(imageUri: Uri) {
         username: String,
         description: String,
         initialLikesCount: Int, // Ajoutez le nombre initial de likes
-        isInitiallyLiked: Boolean
+        isInitiallyLiked: Boolean,
+        userProfileImageUrl: String // Ajoutez l'URL de la photo de profil de l'utilisateur ici
+
     ) {
         val dbRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/likes")
         var liked by remember { mutableStateOf(isInitiallyLiked) }
@@ -1048,7 +1059,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
-                        painter = rememberImagePainter("https://www.example.com/user.jpg"),
+                        painter = rememberImagePainter(data = userProfileImageUrl),
                         contentDescription = "User Icon",
                         modifier = Modifier
                             .size(36.dp) // Increase the size here
