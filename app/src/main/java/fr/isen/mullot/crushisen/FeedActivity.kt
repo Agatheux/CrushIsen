@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
@@ -86,11 +87,15 @@ import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import kotlinx.coroutines.launch
 
 data class Post(
+    val id: String, // Identifiant unique du post
     val ID_user: String,
     val description: String,
-    val like: Int,
+    val likes: Int,
     val photos: List<String>
 )
+
+
+
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -116,7 +121,7 @@ fun HomePage(onNavigate: () -> Unit) {
 // Fonction modifiée pour créer un post avec téléchargement d'images
 fun createPost(context: Context, userId: String, description: String, imageUris: List<Uri>) {
     // Génère un ID unique pour le post
-    val postId = FirebaseDatabase.getInstance().getReference("Crushisen").child("post").push().key ?: return
+    val postId = FirebaseDatabase.getInstance().getReference("Jerem").child("post").push().key ?: return
 
     // Chemin vers le stockage des images
     val storageRef = FirebaseStorage.getInstance().reference.child("postImages/$postId")
@@ -152,7 +157,7 @@ fun createPost(context: Context, userId: String, description: String, imageUris:
                     Log.d("CreatePost", "Post apres les images download: $post")
 
                     // Ajoute le post à Firebase Realtime Database
-                    FirebaseDatabase.getInstance().getReference("Crushisen")
+                    FirebaseDatabase.getInstance().getReference("Jerem")
                         .child("post")
                         .child(postId)
                         .setValue(post)
@@ -286,6 +291,7 @@ class FeedActivity : ComponentActivity() {
             }
             composable("profile") {
                 ProfileEditScreen(navController)
+
             }
             composable("notification") {
                 NotificationEditScreen(navController)
@@ -485,7 +491,7 @@ class FeedActivity : ComponentActivity() {
         val auth = FirebaseAuth.getInstance()
         val db = FirebaseDatabase.getInstance()
         val userId = auth.currentUser?.uid ?: ""
-        val userRef = db.getReference("Crushisen/user").child(userId)
+        val userRef = db.getReference("Jerem/user").child(userId)
 
         var oldPassword by remember { mutableStateOf("") }
         var newPassword by remember { mutableStateOf("") }
@@ -689,25 +695,27 @@ class FeedActivity : ComponentActivity() {
         val db = FirebaseDatabase.getInstance()
         val posts = remember { mutableStateListOf<Post>() }
 
-        val postRef = db.getReference("Crushisen/post").limitToFirst(10)
+        val postRef = db.getReference("Jerem/post").limitToFirst(10)
 
         postRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
+                    posts.clear() // Effacez la liste avant d'ajouter de nouveaux éléments
                     snapshot.children.forEach { postSnapshot ->
-                        val postData = postSnapshot.value as? Map<*, *>
-                        postData?.let {
-                            val ID_user = it["ID_user"].toString()
-                            val description = it["description"].toString()
-                            val like = it["like"]?.toString()?.toIntOrNull() ?: 0
-                            val photos = it["photos"] as? List<String> ?: listOf()
+                        val ID_user =
+                            postSnapshot.child("ID_user").getValue(String::class.java) ?: ""
+                        val description =
+                            postSnapshot.child("description").getValue(String::class.java) ?: ""
+                        val likes = postSnapshot.child("like").getValue(Int::class.java) ?: 0
+                        val photos = postSnapshot.child("photos")
+                            .getValue(object : GenericTypeIndicator<List<String>>() {}) ?: listOf()
 
-                            // Ajoutez chaque post à la liste des posts
-                            posts.add(Post(ID_user, description, like, photos))
-                        }
+                        // Ajoutez chaque post à la liste des posts, n'oubliez pas d'ajouter l'ID du post
+                        posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos))
                     }
                 }
             }
+
 
             override fun onCancelled(databaseError: DatabaseError) {
                 Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
@@ -740,16 +748,20 @@ class FeedActivity : ComponentActivity() {
                             ),
                     ) {
                         LazyColumn {
-                            items(posts.size) { index ->
-                                val post = posts[index]
+                            items(posts) { post -> // Utilisez directement 'post' ici
                                 Log.d("FeedEditScreen", "Post: $post")
                                 StyleCard(
-                                    imageUris = post.photos,// Passer la liste des URL d'images
+                                    postId = post.id, // Assurez-vous d'avoir un 'id' dans votre objet 'Post'
+                                    userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                                    imageUris = post.photos,
                                     username = post.ID_user,
-                                    description = post.description
+                                    description = post.description,
+                                    initialLikesCount = post.likes,
+                                    isInitiallyLiked = false // Modifiez cela selon la logique appropriée pour vérifier si l'utilisateur actuel a déjà aimé le post
                                 )
                             }
                         }
+
                     }
                 }
             )
@@ -760,13 +772,31 @@ class FeedActivity : ComponentActivity() {
     @OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
     @Composable
     fun StyleCard(
-        imageUris: List<String>, // La liste des URLs d'images à afficher
-        username: String, // Nom d'utilisateur à afficher
-        description: String, // Description à afficher
+        postId: String, // Ajoutez l'ID du post
+        userId: String, // Ajoutez l'ID de l'utilisateur actuel
+        imageUris: List<String>,
+        username: String,
+        description: String,
+        initialLikesCount: Int, // Ajoutez le nombre initial de likes
+        isInitiallyLiked: Boolean // Ajoutez si le post est initialement aimé par l'utilisateur
     ) {
-        var liked by remember { mutableStateOf(false) }
-        var likesCount by remember { mutableStateOf(0) }
+        val dbRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/likes")
+        var liked by remember { mutableStateOf(isInitiallyLiked) }
+        var likesCount by remember { mutableStateOf(initialLikesCount) }
         var showDialog by remember { mutableStateOf(false) }
+
+        LaunchedEffect(postId) {
+            dbRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    likesCount = dataSnapshot.childrenCount.toInt()
+                    liked = dataSnapshot.hasChild(userId)
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Log.e("Firebase", "Error fetching post likes: ${databaseError.message}")
+                }
+            })
+        }
 
         Card(
             elevation = 4.dp,
@@ -819,9 +849,14 @@ class FeedActivity : ComponentActivity() {
                 ) {
                     IconToggleButton(
                         checked = liked,
-                        onCheckedChange = {
-                            liked = it
-                            if (it) likesCount++ else if (likesCount > 0) likesCount--
+                        onCheckedChange = { isLiked ->
+                            liked = isLiked
+                            if (isLiked) {
+                                dbRef.child(userId)
+                                    .setValue(System.currentTimeMillis()) // Use current time as value for sorting if needed
+                            } else {
+                                dbRef.child(userId).removeValue()
+                            }
                         }
                     ) {
                         Icon(
@@ -830,13 +865,12 @@ class FeedActivity : ComponentActivity() {
                             tint = if (liked) Color.Red else Color.Gray
                         )
                     }
-                    Text(text = "$likesCount likes") // Display the likes count
+                    Text(text = "$likesCount likes")
                 }
             }
         }
     }
 }
-
 
 
 /*
