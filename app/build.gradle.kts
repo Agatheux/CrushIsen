@@ -154,6 +154,8 @@ dependencies {
     implementation("com.google.accompanist:accompanist-pager-indicators:0.23.0")
     implementation("io.coil-kt:coil-compose:1.4.0")
 
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.20.0")
+
 
 
 }

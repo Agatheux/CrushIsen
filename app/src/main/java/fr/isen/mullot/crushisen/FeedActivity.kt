@@ -83,6 +83,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -382,33 +383,33 @@ fun BottomNavBar(navController: NavHostController) {
     }
 
     Surface(
+    modifier = Modifier.fillMaxWidth(),
+    shape = RectangleShape,
+    border = BorderStroke(1.dp, Color.Gray)
+) {
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RectangleShape,
-        border = BorderStroke(1.dp, Color.Gray)
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            NavigationRailItem(
-                selected = selectedItem.value == "Feed",
-                onClick = { navigateToFeed() },
-                icon = { Icon(painterResource(id = R.drawable.icon_home), contentDescription = null, Modifier.size(24.dp)) },
-            )
+        NavigationRailItem(
+            selected = selectedItem.value == "Feed",
+            onClick = { navigateToFeed() },
+            icon = { Icon(painterResource(id = R.drawable.icon_home), contentDescription = null, Modifier.size(24.dp)) },
+        )
 
-            NavigationRailItem(
-                selected = selectedItem.value == "Profile",
-                onClick = { navigateToProfile() },
-                icon = { Icon(painterResource(id = R.drawable.icon_settings), contentDescription = null, Modifier.size(24.dp)) },
-            )
+        NavigationRailItem(
+            selected = selectedItem.value == "CreatePost",
+            onClick = { navigateToCreatePost() },
+            icon = { Icon(painterResource(id = R.drawable.icon_post), contentDescription = null, Modifier.size(24.dp)) },
+        )
 
-            NavigationRailItem(
-                selected = selectedItem.value == "CreatePost",
-                onClick = { navigateToCreatePost() },
-                icon = { Icon(painterResource(id = R.drawable.icon_post), contentDescription = null, Modifier.size(24.dp)) },
-            )
-        }
+        NavigationRailItem(
+            selected = selectedItem.value == "Profile",
+            onClick = { navigateToProfile() },
+            icon = { Icon(painterResource(id = R.drawable.icon_settings), contentDescription = null, Modifier.size(24.dp)) },
+        )
     }
+}
 }
 
     @Composable
@@ -936,52 +937,56 @@ fun uploadNewProfileImage(imageUri: Uri) {
     fun FeedEditScreen(navController: NavHostController) {
         val db = FirebaseDatabase.getInstance()
         val posts = remember { mutableStateListOf<Post>() }
+        var isRefreshing by remember { mutableStateOf(false) }
 
-        val postRef = db.getReference("Crushisen/post").limitToLast(30)
-        postRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    posts.clear() // Effacez la liste avant d'ajouter de nouveaux éléments
-                    snapshot.children.forEach { postSnapshot ->
-                        val ID_user =
-                            postSnapshot.child("ID_user").getValue(String::class.java) ?: ""
-                        val description =
-                            postSnapshot.child("description").getValue(String::class.java) ?: ""
-                        val likes = postSnapshot.child("like").getValue(Int::class.java) ?: 0
-                        val photos = postSnapshot.child("photos")
-                            .getValue(object : GenericTypeIndicator<List<String>>() {}) ?: listOf()
+        val postRef = db.getReference("Crushisen/post").limitToLast(20)
 
-                        // Ajoutez une requête supplémentaire pour obtenir l'URL de la photo de profil de l'utilisateur
-                        val userRef = db.getReference("Crushisen/user").child(ID_user)
-                        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                            override fun onDataChange(userSnapshot: DataSnapshot) {
-                                val photoUrl = userSnapshot.child("photoUrl").getValue(String::class.java) ?: ""
-                                // Ajoutez chaque post à la liste des posts, n'oubliez pas d'ajouter l'ID du post
-                                posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos, photoUrl))
-                            }
+        fun refreshPosts() {
+            isRefreshing = true
+            postRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        posts.clear()
+                        snapshot.children.forEach { postSnapshot ->
+                            val ID_user =
+                                postSnapshot.child("ID_user").getValue(String::class.java) ?: ""
+                            val description =
+                                postSnapshot.child("description").getValue(String::class.java) ?: ""
+                            val likes = postSnapshot.child("like").getValue(Int::class.java) ?: 0
+                            val photos = postSnapshot.child("photos")
+                                .getValue(object : GenericTypeIndicator<List<String>>() {}) ?: listOf()
 
-                            override fun onCancelled(databaseError: DatabaseError) {
-                                Log.e("Firebase", "Error fetching user photo URL: ${databaseError.message}")
-                            }
-                        })
+                            val userRef = db.getReference("Crushisen/user").child(ID_user)
+                            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(userSnapshot: DataSnapshot) {
+                                    val photoUrl = userSnapshot.child("photoUrl").getValue(String::class.java) ?: ""
+                                    posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos, photoUrl))
+                                }
+
+                                override fun onCancelled(databaseError: DatabaseError) {
+                                    Log.e("Firebase", "Error fetching user photo URL: ${databaseError.message}")
+                                }
+                            })
+                        }
+
                     }
+                    isRefreshing = false
                 }
-            }
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
-            }
-        })
+                override fun onCancelled(databaseError: DatabaseError) {
+                    Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
+                    isRefreshing = false
+                }
+            })
+        }
 
+        // Appel initial pour charger les posts
+        LaunchedEffect(Unit) { refreshPosts() }
 
         CrushIsenTheme {
             Scaffold(
-                bottomBar = {
-                    BottomNavBar(navController = navController)
-                },
-                topBar = {
-                    FeedHeader()
-                },
+                bottomBar = { BottomNavBar(navController = navController) },
+                topBar = { FeedHeader() },
                 content = { paddingValues ->
                     Surface(
                         Modifier
@@ -998,23 +1003,26 @@ fun uploadNewProfileImage(imageUri: Uri) {
                                 )
                             ),
                     ) {
-                        LazyColumn {
-                            items(posts) { post -> // Utilisez directement 'post' ici
-                                Log.d("FeedEditScreen", "Post: $post")
-                                StyleCard(
-                                    postId = post.id, // Assurez-vous d'avoir un 'id' dans votre objet 'Post'
-                                    userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
-                                    imageUris = post.photos,
-                                    username = post.ID_user,
-                                    description = post.description,
-                                    initialLikesCount = post.likes,
-                                    isInitiallyLiked = false,
-                                    userProfileImageUrl = post.photoUrl // Passez l'URL de la photo de profil ici
-
-                                )
+                        com.google.accompanist.swiperefresh.SwipeRefresh(
+                            state = rememberSwipeRefreshState(isRefreshing = isRefreshing),
+                            onRefresh = { refreshPosts() },
+                        ) {
+                            LazyColumn {
+                                items(posts.reversed()) { post ->
+                                    Log.d("FeedEditScreen", "Post: $post")
+                                    StyleCard(
+                                        postId = post.id,
+                                        userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                                        imageUris = post.photos,
+                                        username = post.ID_user,
+                                        description = post.description,
+                                        initialLikesCount = post.likes,
+                                        isInitiallyLiked = false,
+                                        userProfileImageUrl = post.photoUrl
+                                    )
+                                }
                             }
                         }
-
                     }
                 }
             )
