@@ -79,6 +79,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation ("com.google.firebase:firebase-auth:21.0.1")
+
 
     implementation ("androidx.navigation:navigation-compose:2.4.0")
     implementation ("com.github.bumptech.glide:glide:4.12.0")

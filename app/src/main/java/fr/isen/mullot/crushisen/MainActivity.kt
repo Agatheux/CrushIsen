@@ -838,6 +838,12 @@ fun CreateLoginPage(navController: NavController, context: Context) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        androidx.compose.material.Text(
+            text = "Se connecter",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+        )
         OutlinedTextField(
             value = emailValue, // Utiliser emailValue ici
             onValueChange = { emailValue = it }, // Utiliser emailValue ici

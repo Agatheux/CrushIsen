@@ -75,6 +75,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -196,76 +197,104 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
         uri?.let { imageUris = imageUris + it }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Create Post") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        content = { padding ->
-            Column(modifier = Modifier.run {
-                padding(padding)
-                    .padding(16.dp)
-            }) {
-                OutlinedTextField(
-                    value = description.value,
-                    onValueChange = { description.value = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { launcher.launch("image/*") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Choose Image")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-              Button(
-    onClick = { imageUris = emptyList() }, // Set imageUris to a new empty list
-    modifier = Modifier.fillMaxWidth()
-) {
-    Text("Remove Images")
-}
-                Spacer(modifier = Modifier.height(16.dp))
-                imageUris.forEach { uri -> // Display each selected image
-                    Image(
-                        painter = rememberImagePainter(data = uri),
-                        contentDescription = "Selected Image",
-                        modifier = Modifier
-                            .height(200.dp)
-                            .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.medium),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+    val gradientBackground = Brush.verticalGradient(
+        colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
+        startY = 0f,
+        endY = 700f
+    )
 
-                Button(
-                    onClick = {
-                        val userId = auth.currentUser?.uid ?: ""
-                        if (imageUris.isNotEmpty()) {
-                            createPost(context, userId, description.value, imageUris.map { it }) // Pass the list of URIs as strings
-                            Toast.makeText(context, "Post created successfully", Toast.LENGTH_SHORT).show()
-                            onBack() // Navigate back after posting
-                            onBack() // Navigate back after posting
-                        } else {
-                            Toast.makeText(context, "Please select an image", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
+    Scaffold(
+
+        content = { padding ->
+            Box(
+                modifier = Modifier
+                    .background(brush = gradientBackground)
+                    .fillMaxSize()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(padding)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Post")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = "Créer un post",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        textAlign = TextAlign.Center)
+                    OutlinedTextField(
+                        value = description.value,
+                        onValueChange = { description.value = it },
+                        label = { Text("Description", color = Color.White) },
+                        modifier = Modifier.fillMaxWidth(),
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
+                    )
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { launcher.launch("image/*") },
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+
+                    ) {
+                        Text("Choisir une/des images", color = Color(0xffd08ae0), )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { imageUris = emptyList() }, // Set imageUris to a new empty list
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+
+                    ) {
+                        Text("Retirer les images", color = Color(0xffd08ae0))
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    imageUris.forEach { uri -> // Display each selected image
+                        Image(
+                            painter = rememberImagePainter(data = uri),
+                            contentDescription = "Selected Image",
+                            modifier = Modifier
+                                .height(200.dp)
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            val userId = auth.currentUser?.uid ?: ""
+                            if (imageUris.isNotEmpty()) {
+                                createPost(context, userId, description.value, imageUris.map { it }) // Pass the list of URIs as strings
+                                Toast.makeText(context, "Votre post est en ligne", Toast.LENGTH_SHORT).show()
+                                onBack() // Navigate back after posting
+                                onBack() // Navigate back after posting
+                            } else {
+                                Toast.makeText(context, "Veuillez selectionner une image", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+
+                    ) {
+                        Text("Poster", color = Color(0xffd08ae0))
+                    }
                 }
             }
         }
     )
 }
+
 
 class FeedActivity : ComponentActivity() {
 
