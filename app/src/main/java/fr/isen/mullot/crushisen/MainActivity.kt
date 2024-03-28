@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -62,7 +64,6 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
-import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.database.DataSnapshot
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 
 @Composable
 fun MyApp() {
@@ -889,17 +891,29 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(200.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Slogan
-                    Text(
-                        text = "Quand l'amour vous pénêtre",
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontSize = 20.sp,
-                            color = Color.White
-                        ),
-                        modifier = Modifier.padding(bottom = 32.dp)
-                    )
+                    Column(
+                        Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Quand l'amour vous pénètre",
+                            style = androidx.compose.ui.text.TextStyle(
+                                fontSize = 20.sp,
+                                color = Color.White
+                            ),
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+
+
+                            AnimationBar()
+
+                    }
+
+
+
 
                     Spacer(modifier = Modifier.weight(1f))
                     Column(
@@ -993,5 +1007,32 @@ fun uploadImageToFirebaseStorage(context: Context, imageUri: Uri) {
         }
     }.addOnFailureListener { exception ->
         Log.e("Firebase", "Failed to upload image: $exception")
+    }
+}
+
+@Composable
+fun AnimationBar() {
+    val maxWidth = 200.dp
+    val barHeight = 4.dp
+    val animationDuration = 1000L
+
+    var currentPosition by remember { mutableStateOf(0f) }
+    val maxWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
+    val stepSize = maxWidthPx / 50
+
+    LaunchedEffect(key1 = true) {
+        while (true) {
+            delay(animationDuration / 50)
+            currentPosition = (currentPosition + stepSize) % maxWidthPx
+        }
+    }
+
+    Canvas(modifier = Modifier.width(maxWidth).height(barHeight)) {
+        drawLine(
+            color = Color.White,
+            start = Offset(x = currentPosition - stepSize, y = 0f),
+            end = Offset(x = currentPosition, y = 0f),
+            strokeWidth = barHeight.toPx()
+        )
     }
 }

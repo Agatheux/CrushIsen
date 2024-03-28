@@ -69,6 +69,8 @@ dependencies {
 
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -131,6 +133,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation ("androidx.compose.ui:ui:1.1.1") // Vérifiez la dernière version disponible
 
     implementation ("androidx.navigation:navigation-compose:2.4.0")
     implementation ("com.github.bumptech.glide:glide:4.12.0")
@@ -150,6 +153,8 @@ dependencies {
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
     implementation ("androidx.compose.material:material:1.6.4")
     implementation ("androidx.compose.material3:material3:1.0.0-alpha13")
+    implementation ("com.google.android.exoplayer:exoplayer:2.15.1") // replace 2.15.1 with your desired version
+
 
     implementation("com.google.accompanist:accompanist-pager-indicators:0.23.0")
     implementation("io.coil-kt:coil-compose:1.4.0")
