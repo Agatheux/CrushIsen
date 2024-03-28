@@ -419,11 +419,13 @@ fun FeedHeader() {
     val userRef = db.getReference("Crushisen/user").child(userId)
 
     var username by remember { mutableStateOf("") }
+    var photoprofil by remember { mutableStateOf("") }
 
     LaunchedEffect(userId) {
         userRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 username = snapshot.child("pseudo").getValue(String::class.java) ?: ""
+                photoprofil = snapshot.child("photoUrl").getValue(String::class.java) ?: ""
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -432,7 +434,10 @@ fun FeedHeader() {
         })
     }
 
-    val imagePainter = painterResource(id = R.drawable.icon_pp)
+    val imagePainter = rememberImagePainter(data = photoprofil, builder = {
+        crossfade(true)
+    })
+
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
