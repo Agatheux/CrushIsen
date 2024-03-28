@@ -15,6 +15,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -40,6 +42,7 @@ import androidx.compose.material.SnackbarHost
 import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -56,12 +59,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -524,59 +529,129 @@ class FeedActivity : ComponentActivity() {
             }
         }
 
+        val gradientBackground = Brush.linearGradient(
+            colors = listOf(Color(	0xfffd8487), Color(0xffb26ebe)),
+            start = Offset(0f, 0f),
+            end = Offset(1000f, 1000f)
+        )
+
         Scaffold(
-            topBar = {
-                TopAppBar(title = { Text("Edit Profile") })
-            },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             bottomBar = {
                 BottomNavBar(navController = navController)
             }
         ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .background(brush = gradientBackground)
+                    .fillMaxSize()
+            )
             Column(
                 modifier = Modifier
                     .padding(paddingValues)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // TextFields pour pseudo, email, etc...
+                Spacer(modifier = Modifier.height(50.dp))
                 OutlinedTextField(
                     value = pseudo,
                     onValueChange = { pseudo = it },
-                    label = { Text("Pseudo") })
+                    label = {Text(text = "Pseudo", color=Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") })
+                    label = { Text(text="Email", color = Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
+                // Ajoutez des Spacers et Modifier.fillMaxWidth() aux autres OutlinedTextField de la même manière
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") })
+                    label = { Text(text ="Description", color = Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = it },
-                    label = { Text("Phone") })
+                    label = { Text(text="Phone", color = Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
                 OutlinedTextField(
                     value = annee_a_lisen,
                     onValueChange = { annee_a_lisen = it },
-                    label = { Text("Année a l'ISEN") })
+                    label = { Text(text = "Année a l'ISEN", color = Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
                 OutlinedTextField(
                     value = oldPassword,
                     onValueChange = { oldPassword = it },
-                    label = { Text("Ancien mot de passe") },
-                    visualTransformation = PasswordVisualTransformation()
+                    label = { Text(text = "Ancien mot de passe", color = Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
                 OutlinedTextField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
-                    label = { Text("Nouveau mot de passe") },
-                    visualTransformation = PasswordVisualTransformation()
+                    label = { Text(text = "Nouveau mot de passe", color = Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
-                    label = { Text("Confirmer le nouveau mot de passe") },
-                    visualTransformation = PasswordVisualTransformation()
+                    label = { Text(text = "Confirmer le nouveau mot de passe", color = Color.White) },
+                    textStyle = TextStyle(color = Color.White),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
+                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                    ),
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 if (passwordChangeError.isNotEmpty()) {
@@ -584,7 +659,9 @@ class FeedActivity : ComponentActivity() {
                 }
 
 
-                Button(
+
+
+        Button(
                     onClick = {
 // Mise à jour des informations de l'utilisateur
                         val userMap = hashMapOf(
@@ -673,9 +750,22 @@ class FeedActivity : ComponentActivity() {
                                 )
                             }
                         }
-                    }
+                    },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White), // Couleur de fond blanche
+            shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text("Mettre à jour")
+            Text(
+                text = "Mettre a jour",
+                style = TextStyle(
+                    color = Color(0xffd08ae0),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+
+                    )
+            )
                 }
             }
 
