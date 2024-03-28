@@ -292,12 +292,6 @@ class FeedActivity : ComponentActivity() {
             composable("profile") {
                 ProfileEditScreen(navController)
             }
-            composable("notification") {
-                NotificationEditScreen(navController)
-            }
-            composable("homePage") {
-                HomePage(onNavigate = { navController.navigate("createPost") })
-            }
             composable("createPost") {
                 CreatePostPage(context = context, onBack = { navController.popBackStack() })
             }
@@ -323,110 +317,63 @@ class FeedActivity : ComponentActivity() {
     }
 
 
-    @Composable
-    fun BottomNavBar(navController: NavHostController) {
-        // State to track the selected item in the BottomNavBar
-        val selectedItem = remember { mutableStateOf("Feed") }
+@Composable
+fun BottomNavBar(navController: NavHostController) {
+    val selectedItem = remember { mutableStateOf("Feed") }
 
-        // Navigation listener to change the selected item based on the current destination
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            selectedItem.value = when (destination.route) {
-                "feed" -> "Feed"
-                "profile" -> "Profile"
-                "notification" -> "Notification"
-                "homePage" -> "HomePage" // Change this line
-                else -> "Feed" // Set a default value
-            }
-        }
-
-        // Navigation to the "Feed" destination when the "Feed" item is selected
-        fun navigateToFeed() {
-            selectedItem.value = "Feed"
-            navController.navigate("feed")
-        }
-
-        // Navigation to the "Profile" destination when the "Profile" item is selected
-        fun navigateToProfile() {
-            selectedItem.value = "Profile"
-            navController.navigate("profile")
-        }
-
-        // Navigation to the "Notification" destination when the "Notification" item is selected
-        fun navigateToNotification() {
-            selectedItem.value = "Notification"
-            navController.navigate("notification")
-        }
-
-        // Navigation to the "HomePage" destination when the "HomePage" item is selected
-        fun navigateToHomePage() { // Change this function
-            selectedItem.value = "HomePage"
-            navController.navigate("homePage") // Change this line
-        }
-
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RectangleShape,
-            border = BorderStroke(1.dp, Color.Gray)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Navigation item for "Feed"
-                NavigationRailItem(
-                    selected = selectedItem.value == "Feed",
-                    onClick = { navigateToFeed() },
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_home),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
-                )
-
-                // Navigation item for "Notification"
-                NavigationRailItem(
-                    selected = selectedItem.value == "Notification",
-                    onClick = { navigateToNotification() },
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_alert),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
-                )
-
-                // Navigation item for "Profile"
-                NavigationRailItem(
-                    selected = selectedItem.value == "Profile",
-                    onClick = { navigateToProfile() },
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_settings),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
-                )
-
-                // Navigation item for "HomePage"
-                NavigationRailItem(
-                    selected = selectedItem.value == "HomePage", // Change this line
-                    onClick = { navigateToHomePage() }, // Change this line
-                    icon = {
-                        Icon(
-                            painterResource(id = R.drawable.icon_post),
-                            contentDescription = null,
-                            Modifier.size(24.dp)
-                        )
-                    },
-                )
-            }
+    navController.addOnDestinationChangedListener { _, destination, _ ->
+        selectedItem.value = when (destination.route) {
+            "feed" -> "Feed"
+            "profile" -> "Profile"
+            "createPost" -> "CreatePost"
+            else -> "Feed"
         }
     }
 
+    fun navigateToFeed() {
+        selectedItem.value = "Feed"
+        navController.navigate("feed")
+    }
+
+    fun navigateToProfile() {
+        selectedItem.value = "Profile"
+        navController.navigate("profile")
+    }
+
+    fun navigateToCreatePost() {
+        selectedItem.value = "CreatePost"
+        navController.navigate("createPost")
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RectangleShape,
+        border = BorderStroke(1.dp, Color.Gray)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            NavigationRailItem(
+                selected = selectedItem.value == "Feed",
+                onClick = { navigateToFeed() },
+                icon = { Icon(painterResource(id = R.drawable.icon_home), contentDescription = null, Modifier.size(24.dp)) },
+            )
+
+            NavigationRailItem(
+                selected = selectedItem.value == "Profile",
+                onClick = { navigateToProfile() },
+                icon = { Icon(painterResource(id = R.drawable.icon_settings), contentDescription = null, Modifier.size(24.dp)) },
+            )
+
+            NavigationRailItem(
+                selected = selectedItem.value == "CreatePost",
+                onClick = { navigateToCreatePost() },
+                icon = { Icon(painterResource(id = R.drawable.icon_post), contentDescription = null, Modifier.size(24.dp)) },
+            )
+        }
+    }
+}
 
     @Composable
     fun FeedHeader(userName: String) {
