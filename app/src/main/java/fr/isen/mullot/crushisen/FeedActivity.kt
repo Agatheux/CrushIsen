@@ -86,7 +86,9 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.ktx.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import kotlinx.coroutines.launch
 
@@ -430,69 +432,74 @@ fun BottomNavBar(navController: NavHostController) {
 
 
     @SuppressLint("RememberReturnType")
-    @Composable
-    fun ProfileEditScreen(navController: NavHostController) {
-        val snackbarHostState = remember { SnackbarHostState() }
-        val scope = rememberCoroutineScope()
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseDatabase.getInstance()
-        val userId = auth.currentUser?.uid ?: ""
-        val userRef = db.getReference("Crushisen/user").child(userId)
+@Composable
+fun ProfileEditScreen(navController: NavHostController) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val auth = FirebaseAuth.getInstance()
+    val db = FirebaseDatabase.getInstance()
+    val userId = auth.currentUser?.uid ?: ""
+    val userRef = db.getReference("Crushisen/user").child(userId)
 
-        var oldPassword by remember { mutableStateOf("") }
-        var newPassword by remember { mutableStateOf("") }
-        var confirmPassword by remember { mutableStateOf("") }
-        var passwordChangeError by remember { mutableStateOf("") }
-        var pseudo by remember { mutableStateOf("") }
-        var email by remember { mutableStateOf("") }
-        var description by remember { mutableStateOf("") }
-        var phone by remember { mutableStateOf("") }
-        var annee_a_lisen by remember { mutableStateOf("") }
+    var oldPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var passwordChangeError by remember { mutableStateOf("") }
+    var pseudo by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var annee_a_lisen by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-        LaunchedEffect(key1 = userId) {
-            if (userId.isNotEmpty()) {
-                userRef.addValueEventListener(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        val userData = snapshot.value as? Map<*, *>
-                        userData?.let {
-                            pseudo = it["pseudo"].toString()
-                            email = it["email"].toString()
-                            description = it["description"].toString()
-                            phone = it["numero"].toString()
-                            annee_a_lisen = it["annee_a_lisen"].toString()
-                        }
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {
-                        Log.e("ProfileEditScreen", "Failed to load user data: $error")
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "Failed to load user data.",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
-                    }
-                })
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        selectedImageUri = uri
+    }
+    // Récupération des données utilisateur pour les champs auto-remplis
+    LaunchedEffect(userId) {
+        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val userData = snapshot.getValue(User::class.java)
+                userData?.let {
+                    pseudo = it.pseudo
+                    email = it.email
+                    description = it.description
+                    phone = it.numero
+                    annee_a_lisen = it.annee_a_lisen
+                }
             }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Gérer les erreurs de récupération des données
+            }
+        })
+    }
+
+
+    LaunchedEffect(selectedImageUri) {
+        selectedImageUri?.let { uri ->
+            // Si une nouvelle image a été sélectionnée, téléchargez-la et mettez à jour l'URL dans la base de données
+            uploadNewProfileImage(uri)
         }
+    }
 
-        val gradientBackground = Brush.linearGradient(
-            colors = listOf(Color(	0xfffd8487), Color(0xffb26ebe)),
-            start = Offset(0f, 0f),
-            end = Offset(1000f, 1000f)
-        )
+    val gradientBackground = Brush.linearGradient(
+        colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 1000f)
+    )
 
-        Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            bottomBar = {
-                BottomNavBar(navController = navController)
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .background(brush = gradientBackground)
-                    .fillMaxSize()
-            )
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = {
+            BottomNavBar(navController = navController)
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .background(brush = gradientBackground)
+                .fillMaxSize()
+        ) {
             Column(
                 modifier = Modifier
                     .padding(paddingValues)
@@ -500,117 +507,117 @@ fun BottomNavBar(navController: NavHostController) {
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = pseudo,
                     onValueChange = { pseudo = it },
-                    label = {Text(text = "Pseudo", color=Color.White) },
+                    label = { Text(text = "Pseudo", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
+
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text(text="Email", color = Color.White) },
+                    label = { Text(text = "Email", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
-                // Ajoutez des Spacers et Modifier.fillMaxWidth() aux autres OutlinedTextField de la même manière
+
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text(text ="Description", color = Color.White) },
+                    label = { Text(text = "Description", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
+
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = it },
-                    label = { Text(text="Phone", color = Color.White) },
+                    label = { Text(text = "Phone", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
+
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = annee_a_lisen,
                     onValueChange = { annee_a_lisen = it },
                     label = { Text(text = "Année a l'ISEN", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
+
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = oldPassword,
                     onValueChange = { oldPassword = it },
                     label = { Text(text = "Ancien mot de passe", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
+
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
                     label = { Text(text = "Nouveau mot de passe", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp)) // Ajouter un espace
+
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
                     label = { Text(text = "Confirmer le nouveau mot de passe", color = Color.White) },
                     textStyle = TextStyle(color = Color.White),
                     colors = TextFieldDefaults.outlinedTextFieldColors(
-                        unfocusedBorderColor = Color.White, // Couleur du contour lorsque le champ n'est pas sélectionné
-                        focusedBorderColor = Color.White // Couleur du contour lorsque le champ est sélectionné
+                        unfocusedBorderColor = Color.White,
+                        focusedBorderColor = Color.White
                     ),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (passwordChangeError.isNotEmpty()) {
-                    Text(passwordChangeError, color = Color.Red)
-                }
-
-
-
-
-        Button(
+                // Bouton pour mettre à jour le profil
+                Button(
                     onClick = {
-// Mise à jour des informations de l'utilisateur
+                        // Mise à jour des informations de l'utilisateur
                         val userMap = hashMapOf(
                             "pseudo" to pseudo,
                             "email" to email,
@@ -624,8 +631,7 @@ fun BottomNavBar(navController: NavHostController) {
                         if (oldPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
                             if (newPassword == confirmPassword) {
                                 // Étape 1 : Re-authentification de l'utilisateur
-                                val credential =
-                                    EmailAuthProvider.getCredential(userEmail, oldPassword)
+                                val credential = EmailAuthProvider.getCredential(userEmail, oldPassword)
                                 currentUser?.reauthenticate(credential)
                                     ?.addOnCompleteListener { reauthTask ->
                                         if (reauthTask.isSuccessful) {
@@ -661,13 +667,11 @@ fun BottomNavBar(navController: NavHostController) {
                                                     }
                                                 }
                                         } else {
-                                            passwordChangeError =
-                                                "L'ancien mot de passe est incorrect."
+                                            passwordChangeError = "L'ancien mot de passe est incorrect."
                                         }
                                     }
                             } else {
-                                passwordChangeError =
-                                    "Les nouveaux mots de passe ne correspondent pas."
+                                passwordChangeError = "Les nouveaux mots de passe ne correspondent pas."
                             }
                         } else {
                             // Mise à jour uniquement des autres informations si les champs de mot de passe ne sont pas utilisés
@@ -698,180 +702,228 @@ fun BottomNavBar(navController: NavHostController) {
                             }
                         }
                     },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White), // Couleur de fond blanche
-            shape = RoundedCornerShape(20.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-            Text(
-                text = "Mettre a jour",
-                style = TextStyle(
-                    color = Color(0xffd08ae0),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-
-                    )
-            )
-                }
-            }
-
-        }
-    }
-
-
-    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-    @Composable
-    fun FeedEditScreen(navController: NavHostController) {
-        val db = FirebaseDatabase.getInstance()
-        val posts = remember { mutableStateListOf<Post>() }
-
-        val postRef = db.getReference("Crushisen/post").limitToFirst(10)
-
-        postRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    snapshot.children.forEach { postSnapshot ->
-                        val postData = postSnapshot.value as? Map<*, *>
-                        postData?.let {
-                            val ID_user = it["ID_user"].toString()
-                            val description = it["description"].toString()
-                            val like = it["like"]?.toString()?.toIntOrNull() ?: 0
-                            val photos = it["photos"] as? List<String> ?: listOf()
-
-                            // Ajoutez chaque post à la liste des posts
-                            posts.add(Post(ID_user, description, like, photos))
-                        }
-                    }
-                }
-            }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
-            }
-        })
-
-
-        CrushIsenTheme {
-            Scaffold(
-                bottomBar = {
-                    BottomNavBar(navController = navController)
-                },
-                topBar = {
-                    FeedHeader(userName = "Lost")
-                },
-                content = { paddingValues ->
-                    Surface(
-                        Modifier
-                            .padding(paddingValues)
-                            .padding(horizontal = 8.dp)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0xFFF58529),
-                                        Color(0xFFDD2A7B),
-                                        Color(0xFF8134AF),
-                                        Color(0xFF515BD4)
-                                    )
-                                )
-                            ),
-                    ) {
-                        LazyColumn {
-                            items(posts.size) { index ->
-                                val post = posts[index]
-                                Log.d("FeedEditScreen", "Post: $post")
-                                StyleCard(
-                                    imageUris = post.photos,// Passer la liste des URL d'images
-                                    username = post.ID_user,
-                                    description = post.description
-                                )
-                            }
-                        }
-                    }
-                }
-            )
-        }
-    }
-
-
-    @OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
-    @Composable
-    fun StyleCard(
-        imageUris: List<String>, // La liste des URLs d'images à afficher
-        username: String, // Nom d'utilisateur à afficher
-        description: String, // Description à afficher
-    ) {
-        var liked by remember { mutableStateOf(false) }
-        var likesCount by remember { mutableStateOf(0) }
-        var showDialog by remember { mutableStateOf(false) }
-
-        Card(
-            elevation = 4.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.icon_pp),
-                        contentDescription = "User Icon",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .padding(8.dp)
-                    )
                     Text(
-                        text = username,
-                        style = MaterialTheme.typography.body1,
-                        modifier = Modifier.padding(8.dp)
+                        text = "Mettre à jour",
+                        style = TextStyle(
+                            color = Color(0xffd08ae0),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                        )
                     )
                 }
 
-                imageUris.forEach { imageUrl ->
-                    Image(
-                        painter = rememberImagePainter(data = imageUrl),
-                        contentDescription = "Post Image",
-                        modifier = Modifier
-                            .height(200.dp) // Set a fixed height or use .fillMaxWidth() for dynamic size
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp)), // Add some rounded corners
-                        contentScale = ContentScale.Crop
+                // Bouton pour sélectionner une nouvelle photo de profil
+                Button(
+                    onClick = { launcher.launch("image/*") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text(
+                        text = "Changer de photo de profil",
+                        style = TextStyle(
+                            color = Color(0xffd08ae0),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                        )
                     )
-                    Spacer(Modifier.height(8.dp)) // Add space between images if multiple
                 }
+            }
+        }
+    }
+}
 
+// Fonction pour télécharger la nouvelle image dans Firebase Storage et mettre à jour l'URL dans la base de données
+fun uploadNewProfileImage(imageUri: Uri) {
+    val auth = FirebaseAuth.getInstance()
+    val db = FirebaseDatabase.getInstance()
+    val userId = auth.currentUser?.uid ?: ""
+    val userRef = db.getReference("Crushisen/user").child(userId)
+
+    val storageRef = Firebase.storage.reference
+    val imagesRef = storageRef.child("images_profile/${auth.currentUser?.uid}")
+
+    imagesRef.putFile(imageUri)
+        .addOnSuccessListener { taskSnapshot ->
+            // Téléchargement réussi, récupérez l'URL de téléchargement
+            imagesRef.downloadUrl.addOnSuccessListener { uri ->
+                // Mise à jour de l'URL de l'image dans la base de données en temps réel
+                userRef.child("photoUrl").setValue(uri.toString())
+                    .addOnSuccessListener {
+                        // Mise à jour réussie
+                    }
+                    .addOnFailureListener { exception ->
+                        // Gestion des erreurs lors de la mise à jour de l'URL dans la base de données
+                    }
+            }
+        }
+        .addOnFailureListener { exception ->
+            // Gestion des erreurs lors du téléchargement de la nouvelle image dans Firebase Storage
+        }
+}
+
+
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun FeedEditScreen(navController: NavHostController) {
+    val db = FirebaseDatabase.getInstance()
+    val posts = remember { mutableStateListOf<Post>() }
+
+    val postRef = db.getReference("Crushisen/post").limitToFirst(10)
+
+    postRef.addValueEventListener(object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            if (snapshot.exists()) {
+                snapshot.children.forEach { postSnapshot ->
+                    val postData = postSnapshot.value as? Map<*, *>
+                    postData?.let {
+                        val ID_user = it["ID_user"].toString()
+                        val description = it["description"].toString()
+                        val like = it["like"]?.toString()?.toIntOrNull() ?: 0
+                        val photos = it["photos"] as? List<String> ?: listOf()
+
+                        // Ajoutez chaque post à la liste des posts
+                        posts.add(Post(ID_user, description, like, photos))
+                    }
+                }
+            }
+        }
+
+        override fun onCancelled(databaseError: DatabaseError) {
+            Log.e("Firebase", "Error fetching posts: ${databaseError.message}")
+        }
+    })
+
+
+    CrushIsenTheme {
+        Scaffold(
+            bottomBar = {
+                BottomNavBar(navController = navController)
+            },
+            topBar = {
+                FeedHeader(userName = "Lost")
+            },
+            content = { paddingValues ->
+                Surface(
+                    Modifier
+                        .padding(paddingValues)
+                        .padding(horizontal = 8.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFF58529),
+                                    Color(0xFFDD2A7B),
+                                    Color(0xFF8134AF),
+                                    Color(0xFF515BD4)
+                                )
+                            )
+                        ),
+                ) {
+                    LazyColumn {
+                        items(posts.size) { index ->
+                            val post = posts[index]
+                            Log.d("FeedEditScreen", "Post: $post")
+                            StyleCard(
+                                imageUris = post.photos,// Passer la liste des URL d'images
+                                username = post.ID_user,
+                                description = post.description
+                            )
+                        }
+                    }
+                }
+            }
+        )
+    }
+}
+
+
+@OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun StyleCard(
+    imageUris: List<String>, // La liste des URLs d'images à afficher
+    username: String, // Nom d'utilisateur à afficher
+    description: String, // Description à afficher
+) {
+    var liked by remember { mutableStateOf(false) }
+    var likesCount by remember { mutableStateOf(0) }
+    var showDialog by remember { mutableStateOf(false) }
+
+    Card(
+        elevation = 4.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.icon_pp),
+                    contentDescription = "User Icon",
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .padding(8.dp)
+                )
                 Text(
-                    text = description,
-                    style = MaterialTheme.typography.body2,
+                    text = username,
+                    style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(8.dp)
                 )
+            }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+            imageUris.forEach { imageUrl ->
+                Image(
+                    painter = rememberImagePainter(data = imageUrl),
+                    contentDescription = "Post Image",
                     modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    IconToggleButton(
-                        checked = liked,
-                        onCheckedChange = {
-                            liked = it
-                            if (it) likesCount++ else if (likesCount > 0) likesCount--
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                            contentDescription = "Like",
-                            tint = if (liked) Color.Red else Color.Gray
-                        )
+                        .height(200.dp) // Set a fixed height or use .fillMaxWidth() for dynamic size
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp)), // Add some rounded corners
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(Modifier.height(8.dp)) // Add space between images if multiple
+            }
+
+            Text(
+                text = description,
+                style = MaterialTheme.typography.body2,
+                modifier = Modifier.padding(8.dp)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                IconToggleButton(
+                    checked = liked,
+                    onCheckedChange = {
+                        liked = it
+                        if (it) likesCount++ else if (likesCount > 0) likesCount--
                     }
-                    Text(text = "$likesCount likes") // Display the likes count
+                ) {
+                    Icon(
+                        imageVector = if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Like",
+                        tint = if (liked) Color.Red else Color.Gray
+                    )
                 }
+                Text(text = "$likesCount likes") // Display the likes count
             }
         }
     }
+}
 }
 
 
