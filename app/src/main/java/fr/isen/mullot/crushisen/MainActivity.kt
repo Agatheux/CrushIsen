@@ -114,7 +114,7 @@ fun MyApp() {
 @Composable
 fun SplashScreen(navController: NavController) {
     LaunchedEffect(Unit) {
-        delay(5000) // Attente de 5 secondes
+        delay(3000) // Attente de 5 secondes
         navController.navigate("main") // Naviguer vers la destination principale
     }
 
@@ -847,7 +847,12 @@ fun CreateLoginPage(navController: NavController, context: Context) {
                 ) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(8.dp),
+            textStyle = TextStyle(color = Color.White),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                unfocusedBorderColor = Color.White,
+                focusedBorderColor = Color.White
+            )
         )
 
         OutlinedTextField(
@@ -860,7 +865,12 @@ fun CreateLoginPage(navController: NavController, context: Context) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(8.dp),
+            textStyle = TextStyle(color = Color.White),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                unfocusedBorderColor = Color.White,
+                focusedBorderColor = Color.White
+            )
         )
 
         Button(
