@@ -35,7 +35,6 @@ import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
 import androidx.compose.material.IconToggleButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.NavigationRailItem
@@ -48,9 +47,7 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TextFieldDefaults
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.runtime.Composable
@@ -276,7 +273,6 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                                 createPost(context, userId, description.value, imageUris.map { it }) // Pass the list of URIs as strings
                                 Toast.makeText(context, "Votre post est en ligne", Toast.LENGTH_SHORT).show()
                                 onBack() // Navigate back after posting
-                                onBack() // Navigate back after posting
                             } else {
                                 Toast.makeText(context, "Veuillez selectionner une image", Toast.LENGTH_SHORT).show()
                             }
@@ -415,26 +411,45 @@ fun BottomNavBar(navController: NavHostController) {
 }
 
     @Composable
-    fun FeedHeader(userName: String) {
-        val imagePainter = painterResource(id = R.drawable.icon_pp)
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = imagePainter,
-                contentDescription = "Profile Photo",
-                modifier = Modifier
-                    .size(80.dp, 80.dp) // Set the size here
-                    .padding(start = 16.dp) // Add padding to the start
-            )
-            Text(
-                text = userName,
-                modifier = Modifier.padding(start = 16.dp),
-                fontSize = 20.sp, // Increase
-                fontWeight = FontWeight.Bold// the font size here
-            )
-        }
+fun FeedHeader() {
+    val auth = FirebaseAuth.getInstance()
+    val db = FirebaseDatabase.getInstance()
+    val userId = auth.currentUser?.uid ?: ""
+    val userRef = db.getReference("Crushisen/user").child(userId)
+
+    var username by remember { mutableStateOf("") }
+
+    LaunchedEffect(userId) {
+        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                username = snapshot.child("pseudo").getValue(String::class.java) ?: ""
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Handle error
+            }
+        })
     }
+
+    val imagePainter = painterResource(id = R.drawable.icon_pp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = imagePainter,
+            contentDescription = "Profile Photo",
+            modifier = Modifier
+                .size(80.dp, 80.dp) // Set the size here
+                .padding(start = 16.dp) // Add padding to the start
+        )
+        Text(
+            text = username,
+            modifier = Modifier.padding(start = 16.dp),
+            fontSize = 20.sp, // Increase
+            fontWeight = FontWeight.Bold// the font size here
+        )
+    }
+}
 
 
     class FeedViewModel : ViewModel() {
@@ -913,6 +928,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @Composable
     fun FeedEditScreen(navController: NavHostController) {
+        val auth = FirebaseAuth.getInstance()
         val db = FirebaseDatabase.getInstance()
         val posts = remember { mutableStateListOf<Post>() }
 
@@ -931,6 +947,9 @@ fun uploadNewProfileImage(imageUri: Uri) {
                         val photos = postSnapshot.child("photos")
                             .getValue(object : GenericTypeIndicator<List<String>>() {}) ?: listOf()
 
+
+
+
                         // Ajoutez chaque post à la liste des posts, n'oubliez pas d'ajouter l'ID du post
                         posts.add(Post(postSnapshot.key ?: "", ID_user, description, likes, photos))
                     }
@@ -943,14 +962,13 @@ fun uploadNewProfileImage(imageUri: Uri) {
             }
         })
 
-
         CrushIsenTheme {
             Scaffold(
                 bottomBar = {
                     BottomNavBar(navController = navController)
                 },
                 topBar = {
-                    FeedHeader(userName = "Lost")
+                    FeedHeader()
                 },
                 content = { paddingValues ->
                     Surface(
@@ -978,7 +996,8 @@ fun uploadNewProfileImage(imageUri: Uri) {
                                     username = post.ID_user,
                                     description = post.description,
                                     initialLikesCount = post.likes,
-                                    isInitiallyLiked = false // Modifiez cela selon la logique appropriée pour vérifier si l'utilisateur actuel a déjà aimé le post
+                                    isInitiallyLiked = false
+
                                 )
                             }
                         }
@@ -999,7 +1018,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
         username: String,
         description: String,
         initialLikesCount: Int, // Ajoutez le nombre initial de likes
-        isInitiallyLiked: Boolean // Ajoutez si le post est initialement aimé par l'utilisateur
+        isInitiallyLiked: Boolean
     ) {
         val dbRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/likes")
         var liked by remember { mutableStateOf(isInitiallyLiked) }
@@ -1028,9 +1047,16 @@ fun uploadNewProfileImage(imageUri: Uri) {
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = rememberImagePainter("https://www.example.com/user.jpg"),
+                        contentDescription = "User Icon",
+                        modifier = Modifier
+                            .size(36.dp) // Increase the size here
+                            .padding(8.dp)
+                    )
                     Text(
                         text = username,
-                        style = MaterialTheme.typography.body1,
+                        style = MaterialTheme.typography.h6,
                         modifier = Modifier.padding(8.dp)
                     )
                 }
