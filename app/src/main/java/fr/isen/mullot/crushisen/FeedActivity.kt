@@ -318,98 +318,11 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                         Text("Poster", color = Color(0xffd08ae0))
                     }
 
-                    // Bouton pour visualiser tous les posts de l'utilisateur des 24 dernières heures
-                    Button(
-                        onClick = {
-                            // Appel de la fonction pour afficher les posts des 24 dernières heures de l'utilisateur
-                            viewMyPosts(context, auth.currentUser?.uid ?: "")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text("Visualiser tous mes posts", color = Color(0xffd08ae0))
-                    }
-
-                    // Boîte de dialogue pour afficher les posts récupérés
-                    if (showMyPostsDialog) {
-                        AlertDialog(
-                            onDismissRequest = { setShowMyPostsDialog(false) },
-                            title = { Text(text = "Mes Posts") },
-                            text = {
-                                // Afficher les posts récupérés dans la boîte de dialogue
-                                if (myPosts.value.isNotEmpty()) {
-                                    myPosts.value.forEach { post ->
-                                        Text(text = post.description)
-                                    }
-                                } else {
-                                    Text(text = "Aucun post trouvé")
-                                }
-                            },
-                            confirmButton = {
-                                Button(onClick = { setShowMyPostsDialog(false) }) {
-                                    Text("Fermer")
-                                }
-                            }
-                        )
-                    }
                 }
             }
         }
     )
 }
-
-fun viewMyPosts(context: Context, userId: String) {
-    Log.d("viewMyPosts", "Fetching posts for user: $userId")
-
-    val db = FirebaseDatabase.getInstance()
-    val userPostsRef = db.getReference("Crushisen/posts").child(userId)
-
-    // Récupérer la date d'il y a 24 heures
-    val calendar = Calendar.getInstance()
-    calendar.add(Calendar.HOUR_OF_DAY, -24)
-    val twentyFourHoursAgo = calendar.timeInMillis
-    Log.d("viewMyPosts", "Twenty four hours ago: $twentyFourHoursAgo")
-
-    // Récupérer les posts de l'utilisateur des 24 dernières heures
-    userPostsRef.orderByChild("timestamp").startAt(twentyFourHoursAgo.toDouble())
-        .addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                Log.d("viewMyPosts", "Data snapshot: $snapshot")
-
-                val posts = mutableListOf<String>() // Liste pour stocker les descriptions des posts
-                snapshot.children.forEach { postSnapshot ->
-                    val post = postSnapshot.getValue(Post::class.java)
-                    post?.let {
-                        val description = it.description // Récupérer la description du post
-                        posts.add(description) // Ajouter la description à la liste
-                    }
-                }
-
-// Afficher les descriptions des posts
-                if (posts.isNotEmpty()) {
-                    posts.forEach { description ->
-                        Log.d("Post Description", description) // Afficher la description dans les logs
-                    }
-                } else {
-                    Log.d("Post Description", "No posts found") // Aucun post trouvé
-                }
-
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                // Gérer les erreurs lors de la récupération des posts
-                Log.e("viewMyPosts", "Error retrieving posts: $error")
-                Toast.makeText(context, "Erreur lors de la récupération des posts", Toast.LENGTH_SHORT).show()
-            }
-        })
-}
-
-
-
-
-
-
 
 
 class FeedActivity : ComponentActivity() {
@@ -1336,7 +1249,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight() // Fait en sorte que la Box occupe toute la hauteur disponible.
-                        .background(Color.Black.copy(alpha = 0.8f)) // Utilisez un fond noir avec une certaine transparence.
+
                 ) {
                     Column(
                         modifier = Modifier
@@ -1355,14 +1268,20 @@ fun uploadNewProfileImage(imageUri: Uri) {
                         // Remarque : Assurez-vous que LoadComments gère correctement la hauteur et le scrolling.
                         LoadComments(postId = postId)
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
                         // Ici, vous pourriez avoir un champ de texte et un bouton pour soumettre de nouveaux commentaires...
                         // Assurez-vous que ces éléments utilisent également des couleurs qui contrastent bien avec le fond noir.
 
-                        Button(onClick = { showCommentsModal = false }) {
-                            Text("Fermer")
+                        Button(
+                            onClick = { showCommentsModal = false },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp), // Ajout de marge
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFFD8487)), // Couleur de fond du bouton
+                            shape = RoundedCornerShape(8.dp) // Coin arrondi
+                        ) {
+                            Text("Fermer", color = Color.White) // Texte en blanc
                         }
+
                     }
                 }
             }
@@ -1402,28 +1321,45 @@ fun uploadNewProfileImage(imageUri: Uri) {
         // Afficher les commentaires
         DisplayComments(comments = comments)
         Column {
-
             TextField(
                 value = commentText.value,
                 onValueChange = { commentText.value = it },
                 label = { Text("Ajoutez un commentaire") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White) // Fond blanc
+                    .padding(8.dp), // Ajout de marge
+                colors = TextFieldDefaults.textFieldColors( // Personnalisation des couleurs
+                    backgroundColor = Color.White,
+                    textColor = Color.Black, // Texte noir
+                    cursorColor = Color.Black,
+                    focusedIndicatorColor = Color.Transparent, // Pas de bordure de focus
+                    unfocusedIndicatorColor = Color.Transparent // Pas de bordure de focus
+                )
             )
 
-            Button(onClick = {
-                // Logique pour envoyer le commentaire à la base de données
-                // Il faudra générer un userId et un timestamp, puis ajouter un nouveau commentaire dans la base de données.
-                if (commentText.value.isNotBlank()) {
-                    val newCommentRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/comments").push()
-                    val newComment = Comment(currentUserId, commentText.value, System.currentTimeMillis()) // Assurez-vous de remplacer "userId" par l'ID réel de l'utilisateur
-                    newCommentRef.setValue(newComment).addOnSuccessListener {
-                        commentText.value = "" // Réinitialiser le champ après l'envoi
+            Button(
+                onClick = {
+                    // Logique pour envoyer le commentaire à la base de données
+                    // Il faudra générer un userId et un timestamp, puis ajouter un nouveau commentaire dans la base de données.
+                    if (commentText.value.isNotBlank()) {
+                        val newCommentRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/comments").push()
+                        val newComment = Comment(currentUserId, commentText.value, System.currentTimeMillis()) // Assurez-vous de remplacer "userId" par l'ID réel de l'utilisateur
+                        newCommentRef.setValue(newComment).addOnSuccessListener {
+                            commentText.value = "" // Réinitialiser le champ après l'envoi
+                        }
                     }
-                }
-            }) {
-                Text("Envoyer")
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp), // Ajout de marge
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFFD8487)), // Couleur de fond du bouton
+                shape = RoundedCornerShape(8.dp) // Coin arrondi
+            ) {
+                Text("Envoyer", color = Color.White) // Texte en blanc
             }
         }
+
 
 
     }
@@ -1439,8 +1375,15 @@ fun uploadNewProfileImage(imageUri: Uri) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .padding(8.dp)
-                        .background(MaterialTheme.colors.surface)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color(0xFFFD8487), Color(0xFFB26EBE)),
+                                startY = 0f,
+                                endY = 700f
+                            )
+                        )
                         .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp)) // Ajout d'un coin arrondi
                 ) {
                     // Placeholder pour l'image de profil
                     Icon(
@@ -1453,19 +1396,19 @@ fun uploadNewProfileImage(imageUri: Uri) {
                     Column {
                         Text(
                             comment.userId,
-                            color = Color.LightGray, // Couleur pour l'ID de l'utilisateur
+                            color = Color.White, // Couleur pour l'ID de l'utilisateur
                             fontSize = 12.sp, // Plus petit
                             modifier = Modifier.padding(bottom = 4.dp) // Espace sous l'ID de l'utilisateur
                         )
                         Text(
                             comment.text,
-                            color = Color.Black, // Couleur principale pour le texte
+                            color = Color.White, // Couleur principale pour le texte
                             fontSize = 16.sp, // Taille normale
                             modifier = Modifier.padding(bottom = 4.dp) // Espace sous le texte du commentaire
                         )
                         Text(
                             formatTimestamp(comment.timestamp),
-                            color = Color.Gray, // Couleur pour le timestamp
+                            color = Color.LightGray, // Couleur pour le timestamp
                             fontSize = 10.sp // Très petit
                         )
                     }
@@ -1475,6 +1418,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
             }
         }
     }
+
 
     fun formatTimestamp(timestamp: Long): String {
         val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
