@@ -1057,7 +1057,7 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                     Image(
                         painter = painterResource(id = R.drawable.aubergineetcoeur), // Utilisez l'ID de ressource de votre image
                         contentDescription = null, // Description facultative de l'image
-                        modifier = Modifier.size(400.dp), // Taille de l'image
+                        modifier = Modifier.size(350.dp), // Taille de l'image
                     )
 
 
