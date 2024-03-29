@@ -2,6 +2,7 @@ package fr.isen.mullot.crushisen
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.icu.util.Calendar
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -211,13 +212,16 @@ fun createPost(context: Context, userId: String, description: String, imageUris:
 
 @Composable
 fun CreatePostPage(context: Context, onBack: () -> Unit) {
-    val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
     val description = remember { mutableStateOf("") }
-    var imageUris by remember { mutableStateOf(emptyList<Uri>()) } // List of URIs val launcher = rememberLauncherForActivityResult(
+    var imageUris by remember { mutableStateOf(emptyList<Uri>()) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { imageUris = imageUris + it }
     }
+
+    // État pour gérer l'affichage de la boîte de dialogue et stocker les posts récupérés
+    val (showMyPostsDialog, setShowMyPostsDialog) = remember { mutableStateOf(false) }
+    val myPosts = remember { mutableStateOf<List<Post>>(emptyList()) }
 
     val gradientBackground = Brush.verticalGradient(
         colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
@@ -226,7 +230,6 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
     )
 
     Scaffold(
-
         content = { padding ->
             Box(
                 modifier = Modifier
@@ -240,11 +243,13 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = "Créer un post",
+                    Text(
+                        text = "Créer un post",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
-                        textAlign = TextAlign.Center)
+                        textAlign = TextAlign.Center
+                    )
                     OutlinedTextField(
                         value = description.value,
                         onValueChange = { description.value = it },
@@ -258,27 +263,23 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = { launcher.launch("image/*") },
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                         shape = RoundedCornerShape(20.dp)
-
                     ) {
-                        Text("Choisir une/des images", color = Color(0xffd08ae0), )
+                        Text("Choisir une/des images", color = Color(0xffd08ae0))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { imageUris = emptyList() }, // Set imageUris to a new empty list
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        onClick = { imageUris = emptyList() },
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                         shape = RoundedCornerShape(20.dp)
-
                     ) {
                         Text("Retirer les images", color = Color(0xffd08ae0))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    imageUris.forEach { uri -> // Display each selected image
+                    imageUris.forEach { uri ->
                         Image(
                             painter = rememberImagePainter(data = uri),
                             contentDescription = "Selected Image",
@@ -295,26 +296,120 @@ fun CreatePostPage(context: Context, onBack: () -> Unit) {
                         onClick = {
                             val userId = auth.currentUser?.uid ?: ""
                             if (imageUris.isNotEmpty()) {
-                                createPost(context, userId, description.value, imageUris.map { it }) // Pass the list of URIs as strings
-                                Toast.makeText(context, "Votre post est en ligne", Toast.LENGTH_SHORT).show()
-                                onBack() // Navigate back after posting
+                                createPost(context, userId, description.value, imageUris.map { it })
+                                Toast.makeText(
+                                    context,
+                                    "Votre post est en ligne",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                onBack()
                             } else {
-                                Toast.makeText(context, "Veuillez selectionner une image", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Veuillez selectionner une image",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                         shape = RoundedCornerShape(20.dp)
-
                     ) {
                         Text("Poster", color = Color(0xffd08ae0))
+                    }
+
+                    // Bouton pour visualiser tous les posts de l'utilisateur des 24 dernières heures
+                    Button(
+                        onClick = {
+                            // Appel de la fonction pour afficher les posts des 24 dernières heures de l'utilisateur
+                            viewMyPosts(context, auth.currentUser?.uid ?: "")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("Visualiser tous mes posts", color = Color(0xffd08ae0))
+                    }
+
+                    // Boîte de dialogue pour afficher les posts récupérés
+                    if (showMyPostsDialog) {
+                        AlertDialog(
+                            onDismissRequest = { setShowMyPostsDialog(false) },
+                            title = { Text(text = "Mes Posts") },
+                            text = {
+                                // Afficher les posts récupérés dans la boîte de dialogue
+                                if (myPosts.value.isNotEmpty()) {
+                                    myPosts.value.forEach { post ->
+                                        Text(text = post.description)
+                                    }
+                                } else {
+                                    Text(text = "Aucun post trouvé")
+                                }
+                            },
+                            confirmButton = {
+                                Button(onClick = { setShowMyPostsDialog(false) }) {
+                                    Text("Fermer")
+                                }
+                            }
+                        )
                     }
                 }
             }
         }
     )
 }
+
+fun viewMyPosts(context: Context, userId: String) {
+    Log.d("viewMyPosts", "Fetching posts for user: $userId")
+
+    val db = FirebaseDatabase.getInstance()
+    val userPostsRef = db.getReference("Crushisen/posts").child(userId)
+
+    // Récupérer la date d'il y a 24 heures
+    val calendar = Calendar.getInstance()
+    calendar.add(Calendar.HOUR_OF_DAY, -24)
+    val twentyFourHoursAgo = calendar.timeInMillis
+    Log.d("viewMyPosts", "Twenty four hours ago: $twentyFourHoursAgo")
+
+    // Récupérer les posts de l'utilisateur des 24 dernières heures
+    userPostsRef.orderByChild("timestamp").startAt(twentyFourHoursAgo.toDouble())
+        .addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("viewMyPosts", "Data snapshot: $snapshot")
+
+                val posts = mutableListOf<String>() // Liste pour stocker les descriptions des posts
+                snapshot.children.forEach { postSnapshot ->
+                    val post = postSnapshot.getValue(Post::class.java)
+                    post?.let {
+                        val description = it.description // Récupérer la description du post
+                        posts.add(description) // Ajouter la description à la liste
+                    }
+                }
+
+// Afficher les descriptions des posts
+                if (posts.isNotEmpty()) {
+                    posts.forEach { description ->
+                        Log.d("Post Description", description) // Afficher la description dans les logs
+                    }
+                } else {
+                    Log.d("Post Description", "No posts found") // Aucun post trouvé
+                }
+
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Gérer les erreurs lors de la récupération des posts
+                Log.e("viewMyPosts", "Error retrieving posts: $error")
+                Toast.makeText(context, "Erreur lors de la récupération des posts", Toast.LENGTH_SHORT).show()
+            }
+        })
+}
+
+
+
+
+
+
 
 
 class FeedActivity : ComponentActivity() {
@@ -528,444 +623,444 @@ class FeedActivity : ComponentActivity() {
     }
 
 
-    @SuppressLint("RememberReturnType")
-    @Composable
-    fun ProfileEditScreen(navController: NavHostController) {
-        val snackbarHostState = remember { SnackbarHostState() }
-        val scope = rememberCoroutineScope()
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseDatabase.getInstance()
-        val userId = auth.currentUser?.uid ?: ""
-        val userRef = db.getReference("Crushisen/user").child(userId)
+@SuppressLint("RememberReturnType")
+@Composable
+fun ProfileEditScreen(navController: NavHostController) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val auth = FirebaseAuth.getInstance()
+    val db = FirebaseDatabase.getInstance()
+    val userId = auth.currentUser?.uid ?: ""
+    val userRef = db.getReference("Crushisen/user").child(userId)
 
-        var oldPassword by remember { mutableStateOf("") }
-        var newPassword by remember { mutableStateOf("") }
-        var confirmPassword by remember { mutableStateOf("") }
-        var passwordChangeError by remember { mutableStateOf("") }
-        var pseudo by remember { mutableStateOf("") }
-        var email by remember { mutableStateOf("") }
-        var description by remember { mutableStateOf("") }
-        var phone by remember { mutableStateOf("") }
-        var annee_a_lisen by remember { mutableStateOf("") }
-        var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-        val showDialog = remember { mutableStateOf(false) }
+    var oldPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var passwordChangeError by remember { mutableStateOf("") }
+    var pseudo by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var annee_a_lisen by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val showDialog = remember { mutableStateOf(false) }
 
-        val launcher =
-            rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-                selectedImageUri = uri
-            }
-        // Récupération des données utilisateur pour les champs auto-remplis
-        LaunchedEffect(userId) {
-            userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val userData = snapshot.getValue(User::class.java)
-                    userData?.let {
-                        pseudo = it.pseudo
-                        email = it.email
-                        description = it.description
-                        phone = it.numero
-                        annee_a_lisen = it.annee_a_lisen
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    // Gérer les erreurs de récupération des données
-                }
-            })
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            selectedImageUri = uri
         }
-
-
-        LaunchedEffect(selectedImageUri) {
-            selectedImageUri?.let { uri ->
-                // Si une nouvelle image a été sélectionnée, téléchargez-la et mettez à jour l'URL dans la base de données
-                uploadNewProfileImage(uri)
+    // Récupération des données utilisateur pour les champs auto-remplis
+    LaunchedEffect(userId) {
+        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val userData = snapshot.getValue(User::class.java)
+                userData?.let {
+                    pseudo = it.pseudo
+                    email = it.email
+                    description = it.description
+                    phone = it.numero
+                    annee_a_lisen = it.annee_a_lisen
+                }
             }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Gérer les erreurs de récupération des données
+            }
+        })
+    }
+
+
+    LaunchedEffect(selectedImageUri) {
+        selectedImageUri?.let { uri ->
+            // Si une nouvelle image a été sélectionnée, téléchargez-la et mettez à jour l'URL dans la base de données
+            uploadNewProfileImage(uri)
         }
+    }
 
-        val gradientBackground = Brush.linearGradient(
-            colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
-            start = Offset(0f, 0f),
-            end = Offset(1000f, 1000f)
-        )
+    val gradientBackground = Brush.linearGradient(
+        colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 1000f)
+    )
 
-        Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            bottomBar = {
-                BottomNavBar(navController = navController)
-            }
-        ) { paddingValues ->
-            Box(
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = {
+            BottomNavBar(navController = navController)
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .background(brush = gradientBackground)
+                .fillMaxSize()
+        ) {
+            LazyColumn(
                 modifier = Modifier
-                    .background(brush = gradientBackground)
-                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = "Modifier votre profil",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = pseudo,
-                            onValueChange = { pseudo = it },
-                            label = { Text(text = "Pseudo", color = Color.White) },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Modifier votre profil",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pseudo,
+                        onValueChange = { pseudo = it },
+                        label = { Text(text = "Pseudo", color = Color.White) },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text(text = "Email", color = Color.White) },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text(text = "Email", color = Color.White) },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = description,
-                            onValueChange = { description = it },
-                            label = { Text(text = "Description", color = Color.White) },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text(text = "Description", color = Color.White) },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = phone,
-                            onValueChange = { phone = it },
-                            label = { Text(text = "Phone", color = Color.White) },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text(text = "Phone", color = Color.White) },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = annee_a_lisen,
-                            onValueChange = { annee_a_lisen = it },
-                            label = { Text(text = "Année a l'ISEN", color = Color.White) },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = annee_a_lisen,
+                        onValueChange = { annee_a_lisen = it },
+                        label = { Text(text = "Année a l'ISEN", color = Color.White) },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = oldPassword,
-                            onValueChange = { oldPassword = it },
-                            label = { Text(text = "Ancien mot de passe", color = Color.White) },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = oldPassword,
+                        onValueChange = { oldPassword = it },
+                        label = { Text(text = "Ancien mot de passe", color = Color.White) },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = newPassword,
-                            onValueChange = { newPassword = it },
-                            label = { Text(text = "Nouveau mot de passe", color = Color.White) },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text(text = "Nouveau mot de passe", color = Color.White) },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = confirmPassword,
-                            onValueChange = { confirmPassword = it },
-                            label = {
-                                Text(
-                                    text = "Confirmer le nouveau mot de passe",
-                                    color = Color.White
-                                )
-                            },
-                            textStyle = TextStyle(color = Color.White),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                unfocusedBorderColor = Color.White,
-                                focusedBorderColor = Color.White
-                            ),
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = {
+                            Text(
+                                text = "Confirmer le nouveau mot de passe",
+                                color = Color.White
+                            )
+                        },
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                        // Bouton pour mettre à jour le profil
-                        Button(
-                            onClick = {
-                                // Mise à jour des informations de l'utilisateur
-                                val userMap = hashMapOf(
-                                    "pseudo" to pseudo,
-                                    "email" to email,
-                                    "description" to description,
-                                    "numero" to phone,
-                                    "annee_a_lisen" to annee_a_lisen
-                                )
-                                val currentUser = auth.currentUser
-                                val userEmail = currentUser?.email ?: ""
-                                // Vérification si les champs de mot de passe sont remplis et correspondent
-                                if (oldPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
-                                    if (newPassword == confirmPassword) {
-                                        // Étape 1 : Re-authentification de l'utilisateur
-                                        val credential =
-                                            EmailAuthProvider.getCredential(userEmail, oldPassword)
-                                        currentUser?.reauthenticate(credential)
-                                            ?.addOnCompleteListener { reauthTask ->
-                                                if (reauthTask.isSuccessful) {
-                                                    // Étape 2 : Mise à jour du mot de passe
-                                                    currentUser.updatePassword(newPassword)
-                                                        .addOnCompleteListener { updateTask ->
-                                                            if (updateTask.isSuccessful) {
-                                                                // Réinitialisation des champs de mot de passe après mise à jour
-                                                                oldPassword = ""
-                                                                newPassword = ""
-                                                                confirmPassword = ""
+                    // Bouton pour mettre à jour le profil
+                    Button(
+                        onClick = {
+                            // Mise à jour des informations de l'utilisateur
+                            val userMap = hashMapOf(
+                                "pseudo" to pseudo,
+                                "email" to email,
+                                "description" to description,
+                                "numero" to phone,
+                                "annee_a_lisen" to annee_a_lisen
+                            )
+                            val currentUser = auth.currentUser
+                            val userEmail = currentUser?.email ?: ""
+                            // Vérification si les champs de mot de passe sont remplis et correspondent
+                            if (oldPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()) {
+                                if (newPassword == confirmPassword) {
+                                    // Étape 1 : Re-authentification de l'utilisateur
+                                    val credential =
+                                        EmailAuthProvider.getCredential(userEmail, oldPassword)
+                                    currentUser?.reauthenticate(credential)
+                                        ?.addOnCompleteListener { reauthTask ->
+                                            if (reauthTask.isSuccessful) {
+                                                // Étape 2 : Mise à jour du mot de passe
+                                                currentUser.updatePassword(newPassword)
+                                                    .addOnCompleteListener { updateTask ->
+                                                        if (updateTask.isSuccessful) {
+                                                            // Réinitialisation des champs de mot de passe après mise à jour
+                                                            oldPassword = ""
+                                                            newPassword = ""
+                                                            confirmPassword = ""
 
-                                                                // Mise à jour des autres informations de l'utilisateur
-                                                                userRef.updateChildren(userMap as Map<String, Any>)
-                                                                    .addOnSuccessListener {
-                                                                        scope.launch {
-                                                                            snackbarHostState.showSnackbar(
-                                                                                "Profil et mot de passe mis à jour avec succès.",
-                                                                                duration = SnackbarDuration.Short
-                                                                            )
-                                                                        }
-                                                                    }.addOnFailureListener {
-                                                                        scope.launch {
-                                                                            snackbarHostState.showSnackbar(
-                                                                                "Erreur lors de la mise à jour des informations du profil.",
-                                                                                duration = SnackbarDuration.Short
-                                                                            )
-                                                                        }
+                                                            // Mise à jour des autres informations de l'utilisateur
+                                                            userRef.updateChildren(userMap as Map<String, Any>)
+                                                                .addOnSuccessListener {
+                                                                    scope.launch {
+                                                                        snackbarHostState.showSnackbar(
+                                                                            "Profil et mot de passe mis à jour avec succès.",
+                                                                            duration = SnackbarDuration.Short
+                                                                        )
                                                                     }
-                                                            } else {
-                                                                passwordChangeError =
-                                                                    "Erreur lors de la mise à jour du mot de passe."
-                                                            }
-                                                        }
-                                                } else {
-                                                    passwordChangeError =
-                                                        "L'ancien mot de passe est incorrect."
-                                                }
-                                            }
-                                    } else {
-                                        passwordChangeError =
-                                            "Les nouveaux mots de passe ne correspondent pas."
-                                    }
-                                } else {
-                                    // Mise à jour uniquement des autres informations si les champs de mot de passe ne sont pas utilisés
-                                    userRef.updateChildren(userMap as Map<String, Any>)
-                                        .addOnSuccessListener {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    "Profil mis à jour avec succès.",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                        }.addOnFailureListener {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    "Erreur lors de la mise à jour du profil.",
-                                                    duration = SnackbarDuration.Short
-                                                )
-                                            }
-                                        }
-                                }
-
-                                if (passwordChangeError.isNotEmpty()) {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            passwordChangeError,
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text(
-                                text = "Mettre à jour",
-                                style = TextStyle(
-                                    color = Color(0xffd08ae0),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                )
-                            )
-                        }
-
-                        // Bouton pour sélectionner une nouvelle photo de profil
-                        Button(
-                            onClick = { launcher.launch("image/*") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text(
-                                text = "Changer de photo de profil",
-                                style = TextStyle(
-                                    color = Color(0xffd08ae0),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                )
-                            )
-                        }
-                        // Bouton de déconnexion
-                        Button(
-                            onClick = {
-                                auth.signOut()
-                                navController.navigate("MainActivity") {
-                                    popUpTo("ProfileEditScreen") { inclusive = true }
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text(
-                                text = "Déconnexion",
-                                style = TextStyle(
-                                    color = Color(0xffd08ae0),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                )
-                            )
-                        }
-
-                        // Ajoutez un bouton pour supprimer le compte
-                        Button(
-                            onClick = { showDialog.value = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text(
-                                text = "Supprimer le compte",
-                                style = TextStyle(
-                                    color = Color(0xffd08ae0),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                )
-                            )
-                        }
-
-// Affichez un dialogue de confirmation pour la suppression du compte
-                        if (showDialog.value) {
-                            AlertDialog(
-                                onDismissRequest = { showDialog.value = false },
-                                title = { Text(text = "Confirmation") },
-                                text = { Text(text = "Êtes-vous sûr de vouloir supprimer votre compte ?") },
-                                confirmButton = {
-                                    TextButton(
-                                        onClick = {
-                                            // Supprimez le compte de la base de données et de l'authentificateur
-                                            userRef.removeValue().addOnCompleteListener { task ->
-                                                if (task.isSuccessful) {
-                                                    auth.currentUser?.delete()?.addOnCompleteListener { deleteTask ->
-                                                        if (deleteTask.isSuccessful) {
-                                                            // Redirigez l'utilisateur vers MainActivity ou une autre destination
-                                                            navController.navigate("MainActivity") {
-                                                                popUpTo("ProfileEditScreen") { inclusive = true }
-                                                            }
+                                                                }.addOnFailureListener {
+                                                                    scope.launch {
+                                                                        snackbarHostState.showSnackbar(
+                                                                            "Erreur lors de la mise à jour des informations du profil.",
+                                                                            duration = SnackbarDuration.Short
+                                                                        )
+                                                                    }
+                                                                }
                                                         } else {
-                                                            // Gérez l'échec de la suppression du compte de l'authentificateur
+                                                            passwordChangeError =
+                                                                "Erreur lors de la mise à jour du mot de passe."
                                                         }
                                                     }
-                                                } else {
-                                                    // Gérez l'échec de la suppression du compte de la base de données
-                                                }
+                                            } else {
+                                                passwordChangeError =
+                                                    "L'ancien mot de passe est incorrect."
                                             }
                                         }
-                                    ) {
-                                        Text(text = "Confirmer")
-                                    }
-                                },
-                                dismissButton = {
-                                    TextButton(
-                                        onClick = { showDialog.value = false }
-                                    ) {
-                                        Text(text = "Annuler")
-                                    }
+                                } else {
+                                    passwordChangeError =
+                                        "Les nouveaux mots de passe ne correspondent pas."
                                 }
+                            } else {
+                                // Mise à jour uniquement des autres informations si les champs de mot de passe ne sont pas utilisés
+                                userRef.updateChildren(userMap as Map<String, Any>)
+                                    .addOnSuccessListener {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                "Profil mis à jour avec succès.",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
+                                    }.addOnFailureListener {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                "Erreur lors de la mise à jour du profil.",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
+                                    }
+                            }
+
+                            if (passwordChangeError.isNotEmpty()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        passwordChangeError,
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text(
+                            text = "Mettre à jour",
+                            style = TextStyle(
+                                color = Color(0xffd08ae0),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
                             )
-                        }
+                        )
+                    }
+
+                    // Bouton pour sélectionner une nouvelle photo de profil
+                    Button(
+                        onClick = { launcher.launch("image/*") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text(
+                            text = "Changer de photo de profil",
+                            style = TextStyle(
+                                color = Color(0xffd08ae0),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                            )
+                        )
+                    }
+                    // Bouton de déconnexion
+                    Button(
+                        onClick = {
+                            auth.signOut()
+                            navController.navigate("MainActivity") {
+                                popUpTo("ProfileEditScreen") { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text(
+                            text = "Déconnexion",
+                            style = TextStyle(
+                                color = Color(0xffd08ae0),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                            )
+                        )
+                    }
+
+                    // Ajoutez un bouton pour supprimer le compte
+                    Button(
+                        onClick = { showDialog.value = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text(
+                            text = "Supprimer le compte",
+                            style = TextStyle(
+                                color = Color(0xffd08ae0),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                            )
+                        )
+                    }
+
+// Affichez un dialogue de confirmation pour la suppression du compte
+                    if (showDialog.value) {
+                        AlertDialog(
+                            onDismissRequest = { showDialog.value = false },
+                            title = { Text(text = "Confirmation") },
+                            text = { Text(text = "Êtes-vous sûr de vouloir supprimer votre compte ?") },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        // Supprimez le compte de la base de données et de l'authentificateur
+                                        userRef.removeValue().addOnCompleteListener { task ->
+                                            if (task.isSuccessful) {
+                                                auth.currentUser?.delete()?.addOnCompleteListener { deleteTask ->
+                                                    if (deleteTask.isSuccessful) {
+                                                        // Redirigez l'utilisateur vers MainActivity ou une autre destination
+                                                        navController.navigate("MainActivity") {
+                                                            popUpTo("ProfileEditScreen") { inclusive = true }
+                                                        }
+                                                    } else {
+                                                        // Gérez l'échec de la suppression du compte de l'authentificateur
+                                                    }
+                                                }
+                                            } else {
+                                                // Gérez l'échec de la suppression du compte de la base de données
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text(text = "Confirmer")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = { showDialog.value = false }
+                                ) {
+                                    Text(text = "Annuler")
+                                }
+                            }
+                        )
                     }
                 }
             }
         }
     }
+}
 
-    // Fonction pour télécharger la nouvelle image dans Firebase Storage et mettre à jour l'URL dans la base de données
-    fun uploadNewProfileImage(imageUri: Uri) {
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseDatabase.getInstance()
-        val userId = auth.currentUser?.uid ?: ""
-        val userRef = db.getReference("Crushisen/user").child(userId)
+// Fonction pour télécharger la nouvelle image dans Firebase Storage et mettre à jour l'URL dans la base de données
+fun uploadNewProfileImage(imageUri: Uri) {
+    val auth = FirebaseAuth.getInstance()
+    val db = FirebaseDatabase.getInstance()
+    val userId = auth.currentUser?.uid ?: ""
+    val userRef = db.getReference("Crushisen/user").child(userId)
 
-        val storageRef = Firebase.storage.reference
-        val imagesRef = storageRef.child("images_profile/${auth.currentUser?.uid}")
+    val storageRef = Firebase.storage.reference
+    val imagesRef = storageRef.child("images_profile/${auth.currentUser?.uid}")
 
-        imagesRef.putFile(imageUri)
-            .addOnSuccessListener { taskSnapshot ->
-                // Téléchargement réussi, récupérez l'URL de téléchargement
-                imagesRef.downloadUrl.addOnSuccessListener { uri ->
-                    // Mise à jour de l'URL de l'image dans la base de données en temps réel
-                    userRef.child("photoUrl").setValue(uri.toString())
-                        .addOnSuccessListener {
-                            // Mise à jour réussie
-                        }
-                        .addOnFailureListener { exception ->
-                            // Gestion des erreurs lors de la mise à jour de l'URL dans la base de données
-                        }
-                }
+    imagesRef.putFile(imageUri)
+        .addOnSuccessListener { taskSnapshot ->
+            // Téléchargement réussi, récupérez l'URL de téléchargement
+            imagesRef.downloadUrl.addOnSuccessListener { uri ->
+                // Mise à jour de l'URL de l'image dans la base de données en temps réel
+                userRef.child("photoUrl").setValue(uri.toString())
+                    .addOnSuccessListener {
+                        // Mise à jour réussie
+                    }
+                    .addOnFailureListener { exception ->
+                        // Gestion des erreurs lors de la mise à jour de l'URL dans la base de données
+                    }
             }
-            .addOnFailureListener { exception ->
-                // Gestion des erreurs lors du téléchargement de la nouvelle image dans Firebase Storage
-            }
-    }
+        }
+        .addOnFailureListener { exception ->
+            // Gestion des erreurs lors du téléchargement de la nouvelle image dans Firebase Storage
+        }
+}
 
 
 
