@@ -27,11 +27,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +50,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -110,7 +113,7 @@ fun MyApp() {
 @Composable
 fun SplashScreen(navController: NavController) {
     LaunchedEffect(Unit) {
-        delay(5000) // Attente de 5 secondes
+        delay(3000) // Attente de 5 secondes
         navController.navigate("main") // Naviguer vers la destination principale
     }
 
@@ -261,9 +264,10 @@ fun CreateAccountPage(navController: NavController) {
             Text(
                 text = "Création de compte",
                 style = androidx.compose.ui.text.TextStyle(
-                    color = Color.White),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
+                    color = Color.White
+                ),
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
                 modifier = Modifier
                     .padding(bottom = 16.dp)
             )
@@ -279,11 +283,19 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = prenomValue,
                         onValueChange = { prenomValue = it },
-                        label = { Text(
-                            text="Prénom",
-                            color=Color.White) },
+                        label = {
+                            Text(
+                                text = "Prénom",
+                                color = Color.White
+                            )
+                        },
                         modifier
-                        = Modifier.fillMaxWidth()
+                        = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
 
                     )
                 }
@@ -294,10 +306,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = nomValue,
                         onValueChange = { nomValue = it },
-                        label = { Text(
-                            text="Nom",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Nom",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -307,10 +327,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = emailValue,
                         onValueChange = { emailValue = it },
-                        label = { Text(
-                            text="Email",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Email",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -320,10 +348,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = passwordValue,
                         onValueChange = { passwordValue = it },
-                        label = { Text(
-                            text="Mot de passe",
-                            color=Color.White) },
+                        label = {
+                            Text(
+                                text = "Mot de passe",
+                                color = Color.White
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                     )
@@ -335,10 +371,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = confirmPasswordValue,
                         onValueChange = { confirmPasswordValue = it },
-                        label = { Text(
-                            text="Confirmation du mot de passe",
-                            color=Color.White) },
+                        label = {
+                            Text(
+                                text = "Confirmation du mot de passe",
+                                color = Color.White
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        ),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                     )
@@ -350,26 +394,43 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = dateNaissanceValue,
                         onValueChange = { dateNaissanceValue = it },
-                        label = { Text(
-                            text="Date de naissance",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Date de naissance",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
                     Spacer(modifier = Modifier.padding(10.dp))
                 }
             }
+
             2 -> {
                 // Champs pour la deuxième partie
                 item {
                     OutlinedTextField(
                         value = adresseValue,
                         onValueChange = { adresseValue = it },
-                        label = { Text(
-                            text="Adresse",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Adresse",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
 
@@ -380,10 +441,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = anneeLisenValue,
                         onValueChange = { anneeLisenValue = it },
-                        label = { Text(
-                            text="Année à l'ISEN",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Année à l'ISEN",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -393,10 +462,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = numeroValue,
                         onValueChange = { numeroValue = it },
-                        label = { Text(
-                            text="Numéro de téléphone",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Numéro de téléphone",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -406,10 +483,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = descriptionValue,
                         onValueChange = { descriptionValue = it },
-                        label = { Text(
-                            text="Description",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Description",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -419,10 +504,18 @@ fun CreateAccountPage(navController: NavController) {
                     OutlinedTextField(
                         value = pseudoValue,
                         onValueChange = { pseudoValue = it },
-                        label = { Text(
-                            text="Pseudo",
-                            color=Color.White) },
-                        modifier = Modifier.fillMaxWidth()
+                        label = {
+                            Text(
+                                text = "Pseudo",
+                                color = Color.White
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(color = Color.White),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.White,
+                            focusedBorderColor = Color.White
+                        )
                     )
                 }
                 item {
@@ -430,16 +523,18 @@ fun CreateAccountPage(navController: NavController) {
                 }
                 item {
                     OutlinedButton(
-                        onClick = { launcher.launch("image/*")  },
+                        onClick = { launcher.launch("image/*") },
                         modifier = Modifier.fillMaxWidth()
+
                     ) {
                         Text(
-                            text="Télécharger une photo",
+                            text = "Télécharger une photo",
                             style = androidx.compose.ui.text.TextStyle(
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,)
+                                fontSize = 16.sp,
                             )
+                        )
                     }
                 }
                 item {
@@ -471,7 +566,7 @@ fun CreateAccountPage(navController: NavController) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text="Précédent",
+                        text = "Précédent",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xffd08ae0)
@@ -492,10 +587,11 @@ fun CreateAccountPage(navController: NavController) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text="Suivant",
+                        text = "Suivant",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xffd08ae0))
+                        color = Color(0xffd08ae0)
+                    )
                 }
             }
         }
@@ -521,54 +617,80 @@ fun CreateAccountPage(navController: NavController) {
                             if (isValidDateOfBirth(dateNaissanceValue)) {
                                 // Vérification du numéro de téléphone
                                 if (isValidPhoneNumber(numeroValue)) {
-                                    // Vérification de l'e-mail en utilisant la fonction isValidEmail
-                                    if (isValidEmail(emailValue)) {
-                                        // Création de l'utilisateur dans Firebase Authentication
-                                        Firebase.auth.createUserWithEmailAndPassword(emailValue, passwordValue)
-                                            .addOnCompleteListener { task ->
-                                                if (task.isSuccessful) {
-                                                    // L'utilisateur a été créé avec succès
-                                                    val user = User(
-                                                        adresse = adresseValue,
-                                                        annee_a_lisen = anneeLisenValue,
-                                                        date_naissance = dateNaissanceValue,
-                                                        description = descriptionValue,
-                                                        email = emailValue,
-                                                        nom = nomValue,
-                                                        numero = numeroValue,
-                                                        prenom = prenomValue,
-                                                        pseudo = pseudoValue,
-                                                        password = passwordValue,
-                                                    )
-
-                                                    // Enregistrement de l'utilisateur dans Firestore
-                                                    saveUserToFirebase(
-                                                        context = context,
-                                                        user = user,
-                                                        photoUri = photoUri
-                                                    )
-                                                        // Vérification si photoUri n'est pas nulle avant d'appeler la fonction
-                                                        photoUri?.let { uri ->
-                                                            // Téléchargement de l'image dans Firebase Storage
-                                                            uploadImageToFirebaseStorage(
-                                                                context = context,
-                                                                imageUri = uri
+                                    // Vérification du mot de passe
+                                    if (isValidPassword(passwordValue)) {
+                                        // Vérification de l'e-mail en utilisant la fonction isValidEmail
+                                        if (isValidEmail(emailValue)) {
+                                            // Vérification si l'e-mail est déjà utilisé
+                                            isEmailAlreadyUsed(emailValue) { isEmailUsed ->
+                                                if (!isEmailUsed) {
+                                                    // Vérification si le pseudo est déjà utilisé
+                                                    isPseudoAlreadyUsed(pseudoValue) { isPseudoUsed ->
+                                                        if (!isPseudoUsed) {
+                                                            // Création de l'utilisateur dans Firebase Authentication
+                                                            Firebase.auth.createUserWithEmailAndPassword(
+                                                                emailValue,
+                                                                passwordValue
                                                             )
+                                                                .addOnCompleteListener { task ->
+                                                                    if (task.isSuccessful) {
+                                                                        // L'utilisateur a été créé avec succès
+                                                                        val user = User(
+                                                                            adresse = adresseValue,
+                                                                            annee_a_lisen = anneeLisenValue,
+                                                                            date_naissance = dateNaissanceValue,
+                                                                            description = descriptionValue,
+                                                                            email = emailValue,
+                                                                            nom = nomValue,
+                                                                            numero = numeroValue,
+                                                                            prenom = prenomValue,
+                                                                            pseudo = pseudoValue,
+                                                                            password = passwordValue,
+                                                                        )
+
+                                                                        // Enregistrement de l'utilisateur dans Firestore
+                                                                        saveUserToFirebase(
+                                                                            context = context,
+                                                                            user = user,
+                                                                            photoUri = photoUri
+                                                                        )
+                                                                        // Vérification si photoUri n'est pas nulle avant d'appeler la fonction
+                                                                        photoUri?.let { uri ->
+                                                                            // Téléchargement de l'image dans Firebase Storage
+                                                                            uploadImageToFirebaseStorage(
+                                                                                context = context,
+                                                                                imageUri = uri
+                                                                            )
+                                                                        }
+                                                                        showDialog =
+                                                                            true // Afficher le dialog après la création du compte
+                                                                    } else {
+                                                                        // Une erreur s'est produite lors de la création de l'utilisateur
+                                                                        val errorMessage =
+                                                                            task.exception?.message
+                                                                                ?: "Une erreur s'est produite lors de la création de l'utilisateur."
+                                                                        showErrorDialog(errorMessage)
+                                                                        Log.e(
+                                                                            TAG,
+                                                                            "Error creating user: $errorMessage"
+                                                                        )
+                                                                    }
+                                                                }
+                                                        } else {
+                                                            showErrorDialog("Ce pseudo est déjà utilisé.")
                                                         }
-
-
-                                                    showDialog = true // Afficher le dialog après la création du compte
+                                                    }
                                                 } else {
-                                                    // Une erreur s'est produite lors de la création de l'utilisateur
-                                                    val errorMessage = task.exception?.message ?: "Une erreur s'est produite lors de la création de l'utilisateur."
-                                                    showErrorDialog(errorMessage)
-                                                    Log.e(TAG, "Error creating user: $errorMessage")
+                                                    showErrorDialog("Cette adresse e-mail est déjà utilisée.")
                                                 }
                                             }
+                                        } else {
+                                            // Afficher un message d'erreur pour l'e-mail invalide
+                                            showErrorDialog("Veuillez entrer une adresse e-mail valide.")
+                                            Log.e("Validation", "Email invalide")
+                                        }
                                     } else {
-                                        // Afficher un message d'erreur pour l'e-mail invalide
-                                        showErrorDialog("Veuillez entrer une adresse e-mail valide.")
-                                        Log.e("Validation", "Email invalide")
+                                        showErrorDialog("Le mot de passe doit contenir au moins 10 caractères, dont au moins une lettre majuscule, une lettre minuscule, un chiffre et un caractère spécial.")
                                     }
                                 } else {
                                     // Afficher un message d'erreur pour le numéro de téléphone invalide
@@ -594,32 +716,33 @@ fun CreateAccountPage(navController: NavController) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text="Valider",
+                    text = "Valider",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xffd08ae0))
+                    color = Color(0xffd08ae0)
+                )
             }
         }
     }
 
-        // AlertDialog pour afficher le message d'erreur
-        if (showErrorDialog) {
-            AlertDialog(
-                onDismissRequest = { showErrorDialog = false },
-                title = { Text("Erreur") },
-                text = { Text(errorMessage) },
-                confirmButton = {
-                    Button(onClick = { showErrorDialog = false }) {
-                        Text(
-                            text="OK",
-                            color = Color(0xffd08ae0)
-                        )
-                    }
+    // AlertDialog pour afficher le message d'erreur
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text("Erreur") },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                Button(onClick = { showErrorDialog = false }) {
+                    Text(
+                        text="OK",
+                        color = Color(0xffd08ae0)
+                    )
                 }
-            )
-        }
+            }
+        )
+    }
 
-        // Bloc pour afficher l'AlertDialog
+    // Bloc pour afficher l'AlertDialog
     if (showDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -714,16 +837,31 @@ fun CreateLoginPage(navController: NavController, context: Context) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Text(
+            text = "Se connecter",
+            style = androidx.compose.ui.text.TextStyle(
+                color = Color.White
+            ),
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            modifier = Modifier
+                .padding(bottom = 16.dp)
+        )
         OutlinedTextField(
             value = emailValue, // Utiliser emailValue ici
             onValueChange = { emailValue = it }, // Utiliser emailValue ici
             label = { Text(
                 text="Adresse e-mail", // Changer le libellé en "Adresse e-mail"
                 color = Color.White,
-                ) },
+            ) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(8.dp),
+            textStyle = TextStyle(color = Color.White),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                unfocusedBorderColor = Color.White,
+                focusedBorderColor = Color.White
+            )
         )
 
         OutlinedTextField(
@@ -736,7 +874,12 @@ fun CreateLoginPage(navController: NavController, context: Context) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(8.dp),
+            textStyle = TextStyle(color = Color.White),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                unfocusedBorderColor = Color.White,
+                focusedBorderColor = Color.White
+            )
         )
 
         Button(
@@ -755,7 +898,7 @@ fun CreateLoginPage(navController: NavController, context: Context) {
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
 
-                )
+                    )
             )
         }
     }
@@ -911,7 +1054,7 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp)
-                                ,
+                            ,
                             content = {
                                 Text(
                                     "Se connecter",
@@ -944,24 +1087,16 @@ fun LoginPage(navController: NavController = rememberNavController()) {
 }
 
 
-
-
-
-
-
-
-
-
 fun loadPhoto(context: Context, uri: Uri?, onBitmapLoaded: (ImageBitmap) -> Unit) {
     uri?.let { selectedUri ->
-    // Utilisation de Glide pour charger la photo depuis l'URI
+        // Utilisation de Glide pour charger la photo depuis l'URI
         Glide.with(context)
             .asBitmap()
             .load(selectedUri)
             .centerCrop()
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-            // Appelle la fonction de rappel avec le bitmap chargé
+                    // Appelle la fonction de rappel avec le bitmap chargé
                     onBitmapLoaded(resource.asImageBitmap())
                 }
 
