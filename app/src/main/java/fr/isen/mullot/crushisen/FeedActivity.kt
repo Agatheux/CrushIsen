@@ -20,24 +20,31 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
+import androidx.compose.material.BottomSheetScaffold
+import androidx.compose.material.BottomSheetState
+import androidx.compose.material.BottomSheetValue
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.IconToggleButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.NavigationRailItem
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Scaffold
@@ -47,10 +54,15 @@ import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.rememberBottomSheetScaffoldState
+import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,7 +96,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -98,6 +109,9 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class Post(
     val id: String, // Identifiant unique du post
@@ -106,6 +120,12 @@ data class Post(
     val likes: Int,
     val photos: List<String>,
     val photoUrl: String // URL de la photo de profil de l'utilisateur
+)
+
+data class Comment(
+    val userId: String,
+    val text: String,
+    val timestamp: Long
 )
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
@@ -948,12 +968,15 @@ class FeedActivity : ComponentActivity() {
 
 
 
+    @OptIn(ExperimentalMaterialApi::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @Composable
     fun FeedEditScreen(navController: NavHostController) {
         val db = FirebaseDatabase.getInstance()
         val posts = remember { mutableStateListOf<Post>() }
         var isRefreshing by remember { mutableStateOf(false) }
+        val selectedPostId = remember { mutableStateOf<String?>(null) }
+
 
         val postRef = db.getReference("Crushisen/posts").limitToLast(20)
 
@@ -1004,34 +1027,39 @@ class FeedActivity : ComponentActivity() {
                 posts.removeAt(i)
             }
         }
+        val bottomSheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
+        val coroutineScope = rememberCoroutineScope()
+
 
 
         // Appel initial pour charger les posts
         LaunchedEffect(Unit) { refreshPosts() }
-
-        val gradientBackground = Brush.verticalGradient(
-            colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
-            startY = 0f,
-            endY = 700f
+        // Bottom Sheet pour les commentaires
+        val bottomSheetScaffoldState = rememberBottomSheetScaffoldState(
+            bottomSheetState = BottomSheetState(initialValue = BottomSheetValue.Collapsed)
         )
 
-        CrushIsenTheme {
-            Scaffold(
-                bottomBar = { BottomNavBar(navController = navController) },
-                topBar = { FeedHeader(navController) },
-                content = { paddingValues ->
-                    Box(
-                        modifier = Modifier
-                            .background(brush = gradientBackground)
-                            .fillMaxSize()
-                    ) {
-                        com.google.accompanist.swiperefresh.SwipeRefresh(
-                            state = rememberSwipeRefreshState(isRefreshing = isRefreshing),
-                            onRefresh = { refreshPosts() },
-                        ) {
+        BottomSheetScaffold(
+            scaffoldState = bottomSheetScaffoldState,
+            sheetContent = {
+                if (selectedPostId.value != null) {
+                    CommentsBottomSheet(postId = selectedPostId.value!!, db = db)
+                } else {
+                    Box(Modifier.fillMaxHeight()) {
+                        Text("Aucun post sélectionné", Modifier.align(Alignment.Center))
+                    }
+                }
+            },
+            sheetPeekHeight = 0.dp,
+            content = {
+                CrushIsenTheme {
+                    Scaffold(
+                        bottomBar = { BottomNavBar(navController = navController) },
+                        topBar = { FeedHeader(navController) },
+                        content = { paddingValues ->
+                            // Votre contenu...
                             LazyColumn {
                                 items(posts) { post ->
-                                    Log.d("FeedEditScreen", "Post: $post")
                                     StyleCard(
                                         postId = post.id,
                                         userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
@@ -1040,37 +1068,49 @@ class FeedActivity : ComponentActivity() {
                                         description = post.description,
                                         initialLikesCount = post.likes,
                                         isInitiallyLiked = false,
-                                        userProfileImageUrl = post.photoUrl
+                                        userProfileImageUrl = post.photoUrl,
+                                        onCommentIconClick = {
+                                            coroutineScope.launch {
+                                                if (bottomSheetState.isVisible) {
+                                                    bottomSheetState.hide() // Si la bottom sheet est visible, la cacher
+                                                } else {
+                                                    bottomSheetState.show() // Sinon, l'afficher
+                                                }
+                                            }
+                                        }
                                     )
                                 }
-
                             }
                         }
-                    }
+                    )
                 }
-            )
-        }
+            }
+        )
     }
-
-
+    @Composable
+    fun CommentsBottomSheet(postId: String, db: FirebaseDatabase) {
+        // Implémentation de la logique pour charger et afficher les commentaires
+    }
 
     @OptIn(ExperimentalPagerApi::class, ExperimentalFoundationApi::class)
     @Composable
     fun StyleCard(
-        postId: String, // Ajoutez l'ID du post
-        userId: String, // Ajoutez l'ID de l'utilisateur actuel
+        postId: String,
+        userId: String,
         imageUris: List<String>,
         username: String,
         description: String,
-        initialLikesCount: Int, // Ajoutez le nombre initial de likes
+        initialLikesCount: Int,
         isInitiallyLiked: Boolean,
-        userProfileImageUrl: String // Ajoutez l'URL de la photo de profil de l'utilisateur ici
-
-    ) {
+        userProfileImageUrl: String,
+        onCommentIconClick: () -> Unit // Ajout d'un paramètre pour gérer le clic sur l'icône de commentaire
+    ){
         val dbRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/likes")
         var liked by remember { mutableStateOf(isInitiallyLiked) }
         var likesCount by remember { mutableStateOf(initialLikesCount) }
         var showDialog by remember { mutableStateOf(false) }
+        var showCommentsModal by remember { mutableStateOf(false) }
+
 
         LaunchedEffect(postId) {
             dbRef.addValueEventListener(object : ValueEventListener {
@@ -1161,6 +1201,10 @@ class FeedActivity : ComponentActivity() {
                             tint = if (liked) Color.Red else Color.Gray
                         )
                     }
+                    IconButton(onClick = { showCommentsModal = true }) {
+                        Icon(Icons.Default.MailOutline, contentDescription = "Comment")
+                    }
+
                     Text(text = "$likesCount likes")
                 }
             }
@@ -1184,5 +1228,158 @@ class FeedActivity : ComponentActivity() {
                 }
             }
         }
+
+        if (showCommentsModal) {
+            Dialog(onDismissRequest = { showCommentsModal = false }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight() // Fait en sorte que la Box occupe toute la hauteur disponible.
+                        .background(Color.Black.copy(alpha = 0.8f)) // Utilisez un fond noir avec une certaine transparence.
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter) // Assure que la Column est alignée en haut au centre de la Box.
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "Commentaires ",
+                            style = MaterialTheme.typography.h6.copy(color = Color.White)
+
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Chargement et affichage des commentaires.
+                        // Remarque : Assurez-vous que LoadComments gère correctement la hauteur et le scrolling.
+                        LoadComments(postId = postId)
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Ici, vous pourriez avoir un champ de texte et un bouton pour soumettre de nouveaux commentaires...
+                        // Assurez-vous que ces éléments utilisent également des couleurs qui contrastent bien avec le fond noir.
+
+                        Button(onClick = { showCommentsModal = false }) {
+                            Text("Fermer")
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+
+
     }
+    @Composable
+    fun LoadComments(postId: String) {
+        val comments = remember { mutableStateListOf<Comment>() }
+        val commentText = remember { mutableStateOf("") }
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+        // Supposons que vous ayez une classe data pour les commentaires
+
+        LaunchedEffect(postId) {
+            val dbRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/comments")
+            dbRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    comments.clear()
+                    snapshot.children.forEach { commentSnapshot ->
+                        val userId = commentSnapshot.child("userId").getValue(String::class.java) ?: ""
+                        val text = commentSnapshot.child("text").getValue(String::class.java) ?: ""
+                        val timestamp = commentSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                        comments.add(Comment(userId, text, timestamp))
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("LoadComments", "Failed to load comments: ${error.message}")
+                }
+            })
+        }
+        // Afficher les commentaires
+        DisplayComments(comments = comments)
+        Column {
+
+            TextField(
+                value = commentText.value,
+                onValueChange = { commentText.value = it },
+                label = { Text("Ajoutez un commentaire") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Button(onClick = {
+                // Logique pour envoyer le commentaire à la base de données
+                // Il faudra générer un userId et un timestamp, puis ajouter un nouveau commentaire dans la base de données.
+                if (commentText.value.isNotBlank()) {
+                    val newCommentRef = FirebaseDatabase.getInstance().getReference("Crushisen/posts/$postId/comments").push()
+                    val newComment = Comment(currentUserId, commentText.value, System.currentTimeMillis()) // Assurez-vous de remplacer "userId" par l'ID réel de l'utilisateur
+                    newCommentRef.setValue(newComment).addOnSuccessListener {
+                        commentText.value = "" // Réinitialiser le champ après l'envoi
+                    }
+                }
+            }) {
+                Text("Envoyer")
+            }
+        }
+
+
+    }
+
+
+    @Composable
+    fun DisplayComments(comments: List<Comment>) {
+        LazyColumn(modifier = Modifier.padding(vertical = 8.dp)) {
+            items(comments) { comment ->
+                Spacer(modifier = Modifier.height(8.dp)) // Espace avant chaque commentaire
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .background(MaterialTheme.colors.surface)
+                        .padding(8.dp)
+                ) {
+                    // Placeholder pour l'image de profil
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "User",
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp)) // Espace entre l'icône et le texte
+
+                    Column {
+                        Text(
+                            comment.userId,
+                            color = Color.LightGray, // Couleur pour l'ID de l'utilisateur
+                            fontSize = 12.sp, // Plus petit
+                            modifier = Modifier.padding(bottom = 4.dp) // Espace sous l'ID de l'utilisateur
+                        )
+                        Text(
+                            comment.text,
+                            color = Color.Black, // Couleur principale pour le texte
+                            fontSize = 16.sp, // Taille normale
+                            modifier = Modifier.padding(bottom = 4.dp) // Espace sous le texte du commentaire
+                        )
+                        Text(
+                            formatTimestamp(comment.timestamp),
+                            color = Color.Gray, // Couleur pour le timestamp
+                            fontSize = 10.sp // Très petit
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp)) // Espace après chaque commentaire
+            }
+        }
+    }
+
+    fun formatTimestamp(timestamp: Long): String {
+        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+        return sdf.format(Date(timestamp))
+    }
+
+
 }
+
