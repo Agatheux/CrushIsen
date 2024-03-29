@@ -96,6 +96,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
 import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -109,6 +110,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
 import fr.isen.mullot.crushisen.ui.theme.CrushIsenTheme
 import kotlinx.coroutines.launch
+import fr.isen.mullot.crushisen.Comment
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
