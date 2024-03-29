@@ -62,7 +62,6 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
-import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.database.DataSnapshot
@@ -995,3 +994,5 @@ fun uploadImageToFirebaseStorage(context: Context, imageUri: Uri) {
         Log.e("Firebase", "Failed to upload image: $exception")
     }
 }
+
+//images
