@@ -481,7 +481,7 @@ class FeedActivity : ComponentActivity() {
                 painter = imagePainter,
                 contentDescription = "Profile Photo",
                 modifier = Modifier
-                    .size(80.dp, 80.dp) // Set the size here
+                    .size(50.dp, 50.dp) // Set the size here
                     .padding(start = 16.dp) // Add padding to the start
                     .clip(RoundedCornerShape(16.dp)), // Clip the image with rounded corners
                 contentScale = ContentScale.Crop // Crop the image
@@ -1193,7 +1193,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
                             .onSizeChanged { size ->
                                 imageHeight = size.height.dp.coerceAtMost(500.dp) // Limit the maximum height
                             },
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                 }
 
@@ -1249,7 +1249,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }
