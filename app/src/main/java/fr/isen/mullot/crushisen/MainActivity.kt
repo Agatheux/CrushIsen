@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -759,7 +760,10 @@ fun CreateAccountPage(navController: NavController) {
                         navController.navigateUp() // Naviguer vers la première page
                     }
                 ) {
-                    Text("OK")
+                    Text(
+                        text="OK",
+                        color = Color(0xffd08ae0)
+                    )
                 }
             },
             modifier = Modifier.padding(16.dp)
@@ -814,7 +818,10 @@ fun CreateLoginPage(navController: NavController, context: Context) {
             text = { Text("Le pseudo et le mot de passe ne correspondent pas.") },
             confirmButton = {
                 Button(onClick = { showDialog = false }) {
-                    Text("OK")
+                    Text(
+                        text="OK",
+                        color = Color(0xffd08ae0)
+                    )
                 }
             }
         )
@@ -1055,9 +1062,10 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                     Spacer(modifier = Modifier.height(40.dp)) // Ajoutez ce Spacer avec une hauteur
 
                     Image(
-                        painter = painterResource(id = R.drawable.aubergineetcoeur), // Utilisez l'ID de ressource de votre image
+                        painter = painterResource(id = R.drawable.aubergineetcoeur2), // Utilisez l'ID de ressource de votre image
                         contentDescription = null, // Description facultative de l'image
                         modifier = Modifier.size(350.dp), // Taille de l'image
+                        contentScale = ContentScale.Crop // Ajout de ContentScale.Crop
                     )
 
 
