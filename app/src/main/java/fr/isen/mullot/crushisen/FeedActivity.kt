@@ -35,6 +35,7 @@ import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.IconToggleButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.NavigationRailItem
@@ -413,7 +414,7 @@ class FeedActivity : ComponentActivity() {
     }
 
     @Composable
-    fun FeedHeader() {
+    fun FeedHeader(navController: NavHostController) { // Ajoutez NavHostController en paramètre
         val auth = FirebaseAuth.getInstance()
         val db = FirebaseDatabase.getInstance()
         val userId = auth.currentUser?.uid ?: ""
@@ -439,8 +440,12 @@ class FeedActivity : ComponentActivity() {
             crossfade(true)
         })
 
+        val iconPainter = painterResource(id = R.drawable.icon_pp) // Ajoutez cette ligne pour charger l'icône
+
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween, // Ajoutez cette ligne pour espacer les éléments
+            modifier = Modifier.fillMaxWidth() // Ajoutez cette ligne pour que la Row prenne toute la largeur
         ) {
             Image(
                 painter = imagePainter,
@@ -448,16 +453,27 @@ class FeedActivity : ComponentActivity() {
                 modifier = Modifier
                     .size(80.dp, 80.dp) // Set the size here
                     .padding(start = 16.dp) // Add padding to the start
+                    .clip(RoundedCornerShape(16.dp)), // Clip the image with rounded corners
+                contentScale = ContentScale.Crop // Crop the image
             )
             Text(
                 text = username,
                 modifier = Modifier.padding(start = 16.dp),
-                fontSize = 20.sp, // Increase
+                fontSize = 24.sp, // Increase
                 fontWeight = FontWeight.Bold// the font size here
             )
+            IconButton(onClick = { navController.navigate("profile") }) { // Changez Button à IconButton
+                Image(
+                    painter = iconPainter,
+                    contentDescription = "Profile Button",
+                    modifier = Modifier
+                        .size(60.dp) // Réduisez la taille de l'icône ici
+                        .padding(4.dp) // Ajoutez un padding ici
+                        .padding(end = 16.dp) // Ajoutez une marge à la fin ici
+                )
+            }
         }
     }
-
 
     class FeedViewModel : ViewModel() {
         // Message to display
@@ -993,25 +1009,21 @@ class FeedActivity : ComponentActivity() {
         // Appel initial pour charger les posts
         LaunchedEffect(Unit) { refreshPosts() }
 
+        val gradientBackground = Brush.verticalGradient(
+            colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
+            startY = 0f,
+            endY = 700f
+        )
+
         CrushIsenTheme {
             Scaffold(
                 bottomBar = { BottomNavBar(navController = navController) },
-                topBar = { FeedHeader() },
+                topBar = { FeedHeader(navController) },
                 content = { paddingValues ->
-                    Surface(
-                        Modifier
-                            .padding(paddingValues)
-                            .padding(horizontal = 8.dp)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0xFFF58529),
-                                        Color(0xFFDD2A7B),
-                                        Color(0xFF8134AF),
-                                        Color(0xFF515BD4)
-                                    )
-                                )
-                            ),
+                    Box(
+                        modifier = Modifier
+                            .background(brush = gradientBackground)
+                            .fillMaxSize()
                     ) {
                         com.google.accompanist.swiperefresh.SwipeRefresh(
                             state = rememberSwipeRefreshState(isRefreshing = isRefreshing),

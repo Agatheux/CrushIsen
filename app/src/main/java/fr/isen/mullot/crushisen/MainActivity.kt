@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +28,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material3.AlertDialog
@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -1031,23 +1032,44 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(200.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Slogan
-                    Text(
-                        text = "Quand l'amour vous pénêtre",
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontSize = 20.sp,
-                            color = Color.White
-                        ),
-                        modifier = Modifier.padding(bottom = 32.dp)
+                    Column(
+                        Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Quand l'amour vous pénètre",
+                            style = androidx.compose.ui.text.TextStyle(
+                                fontSize = 30.sp,
+                                color = Color.White
+                            ),
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+
+
+                        AnimationBar()
+
+                    }
+                    Image(
+                        painter = painterResource(id = R.drawable.peach), // Utilisez l'ID de ressource de votre image
+                        contentDescription = null, // Description facultative de l'image
+                        modifier = Modifier.size(400.dp) // Taille de l'image
                     )
+
+                    Image(
+                        painter = painterResource(id = R.drawable.icon_aubergine), // Utilisez l'ID de ressource de votre image
+                        contentDescription = null, // Description facultative de l'image
+                        modifier = Modifier.size(100.dp) // Taille de l'image
+                    )
+
 
                     Spacer(modifier = Modifier.weight(1f))
                     Column(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 64.dp)
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 22.dp)
                     ) {
                         Button(
                             onClick = { navigateToCreateLoginScreen(navController) },
@@ -1130,4 +1152,29 @@ fun uploadImageToFirebaseStorage(context: Context, imageUri: Uri) {
     }
 }
 
-//images
+@Composable
+fun AnimationBar() {
+    val maxWidth = 200.dp
+    val barHeight = 4.dp
+    val animationDuration = 1000L
+
+    var currentPosition by remember { mutableStateOf(0f) }
+    val maxWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
+    val stepSize = maxWidthPx / 50
+
+    LaunchedEffect(key1 = true) {
+        while (true) {
+            delay(animationDuration / 50)
+            currentPosition = (currentPosition + stepSize) % maxWidthPx
+        }
+    }
+
+    Canvas(modifier = Modifier.width(maxWidth).height(barHeight)) {
+        drawLine(
+            color = Color.White,
+            start = Offset(x = currentPosition - stepSize, y = 0f),
+            end = Offset(x = currentPosition, y = 0f),
+            strokeWidth = barHeight.toPx()
+        )
+    }
+}
