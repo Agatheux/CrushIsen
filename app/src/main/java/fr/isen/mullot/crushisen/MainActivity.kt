@@ -1052,16 +1052,12 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                         AnimationBar()
 
                     }
-                    Image(
-                        painter = painterResource(id = R.drawable.peach), // Utilisez l'ID de ressource de votre image
-                        contentDescription = null, // Description facultative de l'image
-                        modifier = Modifier.size(400.dp) // Taille de l'image
-                    )
+                    Spacer(modifier = Modifier.height(40.dp)) // Ajoutez ce Spacer avec une hauteur
 
                     Image(
-                        painter = painterResource(id = R.drawable.icon_aubergine), // Utilisez l'ID de ressource de votre image
+                        painter = painterResource(id = R.drawable.aubergineetcoeur), // Utilisez l'ID de ressource de votre image
                         contentDescription = null, // Description facultative de l'image
-                        modifier = Modifier.size(100.dp) // Taille de l'image
+                        modifier = Modifier.size(400.dp), // Taille de l'image
                     )
 
 
