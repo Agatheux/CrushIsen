@@ -1154,7 +1154,11 @@ fun uploadNewProfileImage(imageUri: Uri) {
                         bottomBar = { BottomNavBar(navController = navController) },
                         topBar = { FeedHeader(navController) },
                         content = { paddingValues ->
-                            // Votre contenu...
+                            Box(
+                                modifier = Modifier
+                                    //.background(brush = gradientBackground)
+                                    .fillMaxSize()
+                            )
                             LazyColumn {
                                 items(posts) { post ->
                                     StyleCard(
