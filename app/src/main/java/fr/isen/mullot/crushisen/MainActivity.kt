@@ -110,6 +110,8 @@ fun MyApp() {
         }
     }
 }
+
+
 @Composable
 fun SplashScreen(navController: NavController) {
     LaunchedEffect(Unit) {
@@ -901,7 +903,7 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                         Text(
                             text = "Quand l'amour vous pénètre",
                             style = androidx.compose.ui.text.TextStyle(
-                                fontSize = 20.sp,
+                                fontSize = 30.sp,
                                 color = Color.White
                             ),
                             modifier = Modifier.padding(bottom = 5.dp)
@@ -911,6 +913,17 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                             AnimationBar()
 
                     }
+                    Image(
+                        painter = painterResource(id = R.drawable.peach), // Utilisez l'ID de ressource de votre image
+                        contentDescription = null, // Description facultative de l'image
+                        modifier = Modifier.size(400.dp) // Taille de l'image
+                    )
+
+                    Image(
+                        painter = painterResource(id = R.drawable.icon_aubergines), // Utilisez l'ID de ressource de votre image
+                        contentDescription = null, // Description facultative de l'image
+                        modifier = Modifier.size(100.dp) // Taille de l'image
+                    )
 
 
 
