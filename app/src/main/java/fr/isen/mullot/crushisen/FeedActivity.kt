@@ -987,6 +987,11 @@ fun uploadNewProfileImage(imageUri: Uri) {
         var isRefreshing by remember { mutableStateOf(false) }
         val selectedPostId = remember { mutableStateOf<String?>(null) }
 
+        val gradientBackground = Brush.linearGradient(
+            colors = listOf(Color(0xfffd8487), Color(0xffb26ebe)),
+            start = Offset(0f, 0f),
+            end = Offset(1000f, 1000f)
+        )
 
         val postRef = db.getReference("Crushisen/posts").limitToLast(20)
 
@@ -1069,38 +1074,46 @@ fun uploadNewProfileImage(imageUri: Uri) {
                         content = { paddingValues ->
                             Box(
                                 modifier = Modifier
-                                    //.background(brush = gradientBackground)
+                                    .background(brush = gradientBackground)
                                     .fillMaxSize()
                             )
-                            LazyColumn {
-                                items(posts) { post ->
-                                    StyleCard(
-                                        postId = post.id,
-                                        userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
-                                        imageUris = post.photos,
-                                        username = post.ID_user,
-                                        description = post.description,
-                                        initialLikesCount = post.likes,
-                                        isInitiallyLiked = false,
-                                        userProfileImageUrl = post.photoUrl,
-                                        onCommentIconClick = {
-                                            coroutineScope.launch {
-                                                if (bottomSheetState.isVisible) {
-                                                    bottomSheetState.hide() // Si la bottom sheet est visible, la cacher
-                                                } else {
-                                                    bottomSheetState.show() // Sinon, l'afficher
+                            {
+                                com.google.accompanist.swiperefresh.SwipeRefresh(
+                                    state = rememberSwipeRefreshState(isRefreshing = isRefreshing),
+                                    onRefresh = { refreshPosts() },
+                                ) {
+                                    LazyColumn {
+                                        items(posts) { post ->
+                                            StyleCard(
+                                                postId = post.id,
+                                                userId = FirebaseAuth.getInstance().currentUser?.uid
+                                                    ?: "",
+                                                imageUris = post.photos,
+                                                username = post.ID_user,
+                                                description = post.description,
+                                                initialLikesCount = post.likes,
+                                                isInitiallyLiked = false,
+                                                userProfileImageUrl = post.photoUrl,
+                                                onCommentIconClick = {
+                                                    coroutineScope.launch {
+                                                        if (bottomSheetState.isVisible) {
+                                                            bottomSheetState.hide() // Si la bottom sheet est visible, la cacher
+                                                        } else {
+                                                            bottomSheetState.show() // Sinon, l'afficher
+                                                        }
+                                                    }
                                                 }
-                                            }
+                                            )
                                         }
-                                    )
+                                    }
                                 }
                             }
                         }
                     )
                 }
-            }
-        )
+            })
     }
+
     @Composable
     fun CommentsBottomSheet(postId: String, db: FirebaseDatabase) {
         // Implémentation de la logique pour charger et afficher les commentaires
@@ -1215,11 +1228,10 @@ fun uploadNewProfileImage(imageUri: Uri) {
                             tint = if (liked) Color.Red else Color.Gray
                         )
                     }
+                    Text(text = "$likesCount likes")
                     IconButton(onClick = { showCommentsModal = true }) {
                         Icon(Icons.Default.MailOutline, contentDescription = "Comment")
                     }
-
-                    Text(text = "$likesCount likes")
                 }
             }
         }
