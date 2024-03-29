@@ -1076,6 +1076,7 @@ fun uploadNewProfileImage(imageUri: Uri) {
                                 modifier = Modifier
                                     .background(brush = gradientBackground)
                                     .fillMaxSize()
+                                    .then(Modifier.padding(bottom = it.calculateBottomPadding() + 50.dp)) // Ajout du padding en bas
                             )
                             {
                                 com.google.accompanist.swiperefresh.SwipeRefresh(
