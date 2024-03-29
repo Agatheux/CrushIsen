@@ -1042,7 +1042,7 @@ fun LoginPage(navController: NavController = rememberNavController()) {
                         Text(
                             text = "Quand l'amour vous pénètre",
                             style = androidx.compose.ui.text.TextStyle(
-                                fontSize = 30.sp,
+                                fontSize = 25.sp,
                                 color = Color.White
                             ),
                             modifier = Modifier.padding(bottom = 5.dp)
